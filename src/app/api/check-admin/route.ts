@@ -1,33 +1,18 @@
-import { createServerClient } from '@supabase/ssr';
+// src/app/api/check-admin/route.ts
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 
 export async function GET() {
   try {
     const cookieStore = cookies();
-
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get(name) {
-            return cookieStore.get(name)?.value;
-          },
-          set(name, value, options) {
-            cookieStore.set({ name, value, ...options });
-          },
-          remove(name, options) {
-            cookieStore.set({ name, value: '', ...options });
-          },
-        },
-      }
-    );
-
+    
+    const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
+    
     const { data: { session } } = await supabase.auth.getSession();
     
     if (!session) {
-      return NextResponse.json({ isAdmin: false }, { status: 401 });
+      return NextResponse.json({ isAdmin: false }, { status: 200 });
     }
 
     const { data, error } = await supabase
@@ -38,12 +23,12 @@ export async function GET() {
 
     if (error) {
       console.error('Erro ao verificar role do usuário:', error);
-      return NextResponse.json({ isAdmin: false });
+      return NextResponse.json({ isAdmin: false }, { status: 200 });
     }
 
-    return NextResponse.json({ isAdmin: data?.is_admin || false });
+    return NextResponse.json({ isAdmin: data?.is_admin || false }, { status: 200 });
   } catch (error) {
     console.error('Erro ao verificar status de administrador:', error);
-    return NextResponse.json({ isAdmin: false }, { status: 500 });
+    return NextResponse.json({ isAdmin: false }, { status: 200 });
   }
 }

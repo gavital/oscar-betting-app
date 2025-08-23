@@ -27,26 +27,35 @@ export default function RegisterPage() {
   const onSubmit = async (data: RegisterForm) => {
     setLoading(true);
     try {
-      // Usar o endpoint do servidor em vez de chamar o Supabase diretamente
-      const response = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: data.email,
-          password: data.password,
-          fullName: data.fullName,
-        }),
-      });
-      
-      const result = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(result.error || 'Erro ao registrar');
+      // Verificar se as variáveis de ambiente estão definidas
+      if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+        throw new Error("Configurações do Supabase não encontradas");
       }
       
-      // Processar o resultado bem-sucedido
+      // Registrar o usuário com tratamento de erro melhorado
+      const { data: authData, error } = await supabase.auth.signUp({
+        email: data.email,
+        password: data.password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          data: {
+            full_name: data.fullName,
+          },
+        },
+      }).catch(e => {
+        console.error("Erro na chamada do Supabase:", e);
+        throw e;
+      });
+  
+      if (error) {
+        if (error.message.toLowerCase().includes('user already registered')) {
+          toast.error('Este email já está em uso');
+        } else {
+          toast.error(`Erro ao registrar: ${error.message}`);
+        }
+        return;
+      }
+  
       toast.success('Registro realizado com sucesso! Verifique seu email para confirmação.');
       router.push('/auth/login');
     } catch (error: any) {

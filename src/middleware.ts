@@ -1,8 +1,6 @@
-// src/middleware.ts
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { cookies } from 'next/headers';
 
 export async function middleware(req: NextRequest) {
   const res = NextResponse.next();
@@ -52,14 +50,20 @@ export async function middleware(req: NextRequest) {
 
   // Verificar acesso admin para rotas admin
   if (session && req.nextUrl.pathname.startsWith('/admin/')) {
-    // Verificar se é admin usando a tabela user_roles
-    const { data: userRole } = await supabase
-      .from('user_roles')
-      .select('is_admin')
-      .eq('user_id', session.user.id)
-      .single();
-      
-    if (!userRole?.is_admin) {
+    try {
+      // Verificar se é admin
+      const { data: userRole, error } = await supabase
+        .from('user_roles')
+        .select('is_admin')
+        .eq('user_id', session.user.id)
+        .single();
+        
+      if (error || !userRole?.is_admin) {
+        return NextResponse.redirect(new URL('/', req.url));
+      }
+    } catch (error) {
+      // Em caso de erro, redirecionar para a página inicial
+      console.error('Erro ao verificar permissões de admin:', error);
       return NextResponse.redirect(new URL('/', req.url));
     }
   }

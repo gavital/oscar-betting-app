@@ -22,7 +22,7 @@ export function useAdmin() {
 
         setUserId(session.user.id);
 
-        // Verificar se é admin diretamente pelo Supabase
+        // Verificar se é admin diretamente pelo Supabase em vez de usar a API
         const { data, error } = await supabase
           .from('user_roles')
           .select('is_admin')
@@ -30,12 +30,12 @@ export function useAdmin() {
           .single();
 
         if (error) {
-          console.error("Erro ao verificar status de admin:", error);
-          toast.error("Erro ao verificar permissões");
+          console.error('Erro ao verificar status de administrador:', error);
+          toast.error('Erro ao verificar permissões');
           router.push('/');
           return;
         }
-        
+
         if (!data?.is_admin) {
           toast.error('Acesso restrito a administradores');
           router.push('/');
