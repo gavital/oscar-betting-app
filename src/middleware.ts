@@ -1,40 +1,46 @@
 // src/middleware.ts
-import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs';
+import { createServerClient } from '@supabase/ssr';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { cookies } from 'next/headers';
 
 export async function middleware(req: NextRequest) {
   const res = NextResponse.next();
-  const supabase = createMiddlewareClient({ req, res });
+  
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get: (name) => {
+          return req.cookies.get(name)?.value;
+        },
+        set: (name, value, options) => {
+          res.cookies.set({
+            name,
+            value,
+            ...options,
+          });
+        },
+        remove: (name, options) => {
+          res.cookies.set({
+            name,
+            value: '',
+            ...options,
+          });
+        },
+      },
+    }
+  );
   
   const {
     data: { session },
   } = await supabase.auth.getSession();
 
-  // Verificar se é uma rota admin
-  if (req.nextUrl.pathname.startsWith('/admin')) {
-    if (!session) {
-      const url = new URL('/auth/login', req.url);
-      url.searchParams.set('redirectTo', req.nextUrl.pathname);
-      return NextResponse.redirect(url);
-    }
-    
-    // Verificar se é admin
-    const { data } = await supabase
-      .from('user_roles')
-      .select('is_admin')
-      .eq('user_id', session.user.id)
-      .single();
-      
-    if (!data || !data.is_admin) {
-      return NextResponse.redirect(new URL('/', req.url));
-    }
-  }
-
   // Se não estiver autenticado e não estiver acessando rotas de autenticação
   if (!session && !req.nextUrl.pathname.startsWith('/auth/')) {
     const url = new URL('/auth/login', req.url);
-    url.searchParams.set('redirectTo', req.nextUrl.pathname);
+    url.searchParams.set('redirectUrl', req.nextUrl.pathname);
     return NextResponse.redirect(url);
   }
 
@@ -42,6 +48,20 @@ export async function middleware(req: NextRequest) {
   if (session && req.nextUrl.pathname.startsWith('/auth/')) {
     const url = new URL('/', req.url);
     return NextResponse.redirect(url);
+  }
+
+  // Verificar acesso admin para rotas admin
+  if (session && req.nextUrl.pathname.startsWith('/admin/')) {
+    // Verificar se é admin usando a tabela user_roles
+    const { data: userRole } = await supabase
+      .from('user_roles')
+      .select('is_admin')
+      .eq('user_id', session.user.id)
+      .single();
+      
+    if (!userRole?.is_admin) {
+      return NextResponse.redirect(new URL('/', req.url));
+    }
   }
 
   return res;
