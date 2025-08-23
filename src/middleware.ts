@@ -1,3 +1,4 @@
+// src/middleware.ts
 import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
@@ -10,10 +11,30 @@ export async function middleware(req: NextRequest) {
     data: { session },
   } = await supabase.auth.getSession();
 
+  // Verificar se é uma rota admin
+  if (req.nextUrl.pathname.startsWith('/admin')) {
+    if (!session) {
+      const url = new URL('/auth/login', req.url);
+      url.searchParams.set('redirectTo', req.nextUrl.pathname);
+      return NextResponse.redirect(url);
+    }
+    
+    // Verificar se é admin
+    const { data } = await supabase
+      .from('user_roles')
+      .select('is_admin')
+      .eq('user_id', session.user.id)
+      .single();
+      
+    if (!data || !data.is_admin) {
+      return NextResponse.redirect(new URL('/', req.url));
+    }
+  }
+
   // Se não estiver autenticado e não estiver acessando rotas de autenticação
   if (!session && !req.nextUrl.pathname.startsWith('/auth/')) {
     const url = new URL('/auth/login', req.url);
-    url.searchParams.set('redirectUrl', req.nextUrl.pathname);
+    url.searchParams.set('redirectTo', req.nextUrl.pathname);
     return NextResponse.redirect(url);
   }
 
@@ -21,14 +42,6 @@ export async function middleware(req: NextRequest) {
   if (session && req.nextUrl.pathname.startsWith('/auth/')) {
     const url = new URL('/', req.url);
     return NextResponse.redirect(url);
-  }
-
-  // Verificar acesso admin para rotas admin
-  if (session && req.nextUrl.pathname.startsWith('/admin/')) {
-    // O ideal seria verificar direto com o Supabase se é admin
-    // mas por limitações do middleware, podemos redirecionar e deixar
-    // a verificação específica para ser feita nas páginas de admin
-    // Alternativa: usar cookies para armazenar temporariamente o status de admin
   }
 
   return res;

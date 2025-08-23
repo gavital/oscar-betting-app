@@ -1,32 +1,31 @@
-import { createClient } from '@supabase/supabase-js';
-import { NextRequest, NextResponse } from 'next/server';
+// src/app/api/check-admin/route.ts
+import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import { NextResponse } from 'next/server';
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
-    // Criar cliente Supabase no lado do servidor
     const cookieStore = cookies();
-    
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-    
-    // Criar cliente Supabase com cookies para manter a sessão
-    const supabase = createClient(supabaseUrl, supabaseKey, {
-      cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value;
+
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name) {
+            return cookieStore.get(name)?.value;
+          },
         },
-      },
-    });
-    
+      }
+    );
+
     const { data: { session } } = await supabase.auth.getSession();
     
     if (!session) {
       return NextResponse.json({ isAdmin: false }, { status: 401 });
     }
 
-    // Verificar na tabela user_roles se o usuário é administrador
-    const { data: userRole, error } = await supabase
+    const { data, error } = await supabase
       .from('user_roles')
       .select('is_admin')
       .eq('user_id', session.user.id)
@@ -34,12 +33,12 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       console.error('Erro ao verificar role do usuário:', error);
-      return NextResponse.json({ isAdmin: false }, { status: 200 });
+      return NextResponse.json({ isAdmin: false });
     }
 
-    return NextResponse.json({ isAdmin: userRole?.is_admin || false }, { status: 200 });
+    return NextResponse.json({ isAdmin: data?.is_admin || false });
   } catch (error) {
     console.error('Erro ao verificar status de administrador:', error);
-    return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 });
+    return NextResponse.json({ isAdmin: false }, { status: 500 });
   }
 }
