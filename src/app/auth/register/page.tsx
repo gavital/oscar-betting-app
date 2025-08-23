@@ -27,36 +27,31 @@ export default function RegisterPage() {
   const onSubmit = async (data: RegisterForm) => {
     setLoading(true);
     try {
-      // Registrar o usuário
-      const { data: authData, error } = await supabase.auth.signUp({
-        email: data.email,
-        password: data.password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
-          data: {
-            full_name: data.fullName,
-          },
+      // Usar o endpoint do servidor em vez de chamar o Supabase diretamente
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
+        body: JSON.stringify({
+          email: data.email,
+          password: data.password,
+          fullName: data.fullName,
+        }),
       });
-
-      if (error) {
-        if (error.message.toLowerCase().includes('user already registered')) {
-          toast.error('Este email já está em uso');
-        } else {
-          toast.error(`Erro ao registrar: ${error.message}`);
-        }
-        return;
+      
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.error || 'Erro ao registrar');
       }
-
-      // IMPORTANTE: Não tentaremos criar o perfil do usuário aqui
-      // Isso será feito automaticamente após a confirmação do email
-      // ou pode ser implementado na página de callback
-
+      
+      // Processar o resultado bem-sucedido
       toast.success('Registro realizado com sucesso! Verifique seu email para confirmação.');
       router.push('/auth/login');
     } catch (error: any) {
       console.error('Erro ao registrar:', error);
-      toast.error('Erro ao registrar. Por favor, tente novamente.');
+      toast.error(error.message || 'Erro ao registrar. Por favor, tente novamente.');
     } finally {
       setLoading(false);
     }
