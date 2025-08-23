@@ -24,13 +24,6 @@ export default function CategoriesAdminPage() {
   const [loading, setLoading] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
 
-  const { register, handleSubmit, reset, setValue, formState: { errors } } = useForm<CategoryForm>({
-    resolver: zodResolver(categorySchema),
-    defaultValues: {
-      nominees_count: 5
-    }
-  });
-
   useEffect(() => {
     if (isAdmin) {
       fetchCategories();
