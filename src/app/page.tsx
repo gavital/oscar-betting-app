@@ -1,5 +1,4 @@
 // src/app/page.tsx
-import RegisterForm from '@/components/RegisterForm';
 import LogoutButton from '@/components/LogoutButton';
 
 export default function Home() {
@@ -9,7 +8,6 @@ export default function Home() {
         Oscar Betting App
       </h1>
       <LogoutButton />
-      <RegisterForm />
     </main>
   )
 }

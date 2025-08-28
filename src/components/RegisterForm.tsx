@@ -1,6 +1,8 @@
 // src/components/RegisterForm.tsx
+'use client';
+
 import React, { useState } from 'react';
-import { createClient } from '@/utils/supabase-server';
+import { createClient } from '@/utils/supabase-client';
 
 const RegisterForm = () => {
   const [name, setName] = useState('');
@@ -92,7 +94,7 @@ const RegisterForm = () => {
         >
           Registrar
         </button>
-        <a className="inline-block align-baseline font-bold text-sm text-blue-500 hover:text-blue-800" href="#">
+        <a className="inline-block align-baseline font-bold text-sm text-blue-500 hover:text-blue-800" href="/login">
           Já tem uma conta?
         </a>
       </div>

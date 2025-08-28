@@ -1,6 +1,7 @@
 // src/components/LoginForm.tsx
+'use client'
 import React, { useState } from 'react';
-import { createClient } from '@/utils/supabase-server';
+import { createClient } from '@/utils/supabase-client';
 import { useRouter } from 'next/navigation';
 
 const LoginForm = () => {
@@ -70,6 +71,9 @@ const LoginForm = () => {
                 <a className="inline-block align-baseline font-bold text-sm text-blue-500 hover:text-blue-800" href="/auth/forgot-password">
                     Esqueceu a senha?
                 </a>
+                <a className="inline-block align-baseline font-bold text-sm text-blue-500 hover:text-blue-800" href="/register">
+                    Criar uma conta
+                  </a>
             </div>
         </form>
     );
