@@ -8,7 +8,8 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import Link from 'next/link'
 import { ArrowLeft, Save } from 'lucide-react'
-import { useFormState, useFormStatus } from 'react-dom'
+import { useActionState } from 'react'
+import { useFormStatus } from 'react-dom'
 import { toast } from 'sonner'
 import { useEffect } from 'react'
 import { createCategory } from '../actions'
@@ -35,7 +36,7 @@ function SubmitButton() {
 }
 
 export default function NewCategoryPage() {
-  const [state, formAction] = useFormState(createCategory, null)
+  const [state, formAction] = useActionState(createCategory, null)
 
   useEffect(() => {
     if (state?.error) {
@@ -62,7 +63,8 @@ export default function NewCategoryPage() {
           <CardTitle className="text-2xl">Nova Categoria</CardTitle>
         </CardHeader>
         <CardContent>
-          <form action={formAction} className="space-y-6">
+          {/* Aqui está a mudança importante: method="post" */}
+          <form action={formAction} method="post" className="space-y-6">
             <div>
               <Label htmlFor="name">Nome da Categoria</Label>
               <Input
