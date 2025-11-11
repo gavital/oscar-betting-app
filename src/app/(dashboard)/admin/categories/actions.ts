@@ -5,12 +5,8 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 
 /**
- * createCategory - server action flexível para aceitar:
- * - Request (await request.formData())
- * - FormData
- * - plain object ({ name, max_nominees })
- *
- * Também encontra chaves com prefixos (ex: "1_name", "0_max_nominees") que o Next pode gerar.
+ * createCategory - server action com logging de diagnóstico para investigar
+ * por que campos enviados como "1_name"/"1_max_nominees" não estão sendo lidos.
  */
 export async function createCategory(input: any) {
   const supabase = await createServerSupabaseClient()
@@ -18,27 +14,48 @@ export async function createCategory(input: any) {
   // --- Normaliza para FormData-like ou objectMap ---
   let fd: FormData | Record<string, any> | null = null
 
+  // Early guard
   if (!input) {
+    console.log('[createCategory] input is falsy', { input })
     return {
       error:
         'Dados do formulário não recebidos. Certifique-se de que o <form> use action={createCategory} e method="post", e que os inputs tenham name.'
     }
   }
 
+  // Log tipo inicial
+  console.log('[createCategory] typeof input:', typeof input, 'has formData():', typeof input?.formData === 'function', 'has get():', typeof input?.get === 'function')
+
   // Se for um Request-like (Next frequentemente envia assim)
   if (typeof input?.formData === 'function') {
     try {
       fd = await input.formData()
+      console.log('[createCategory] converted Request -> FormData')
+      // Mostra entradas do FormData
+      try {
+        const entries = Array.from((fd as FormData).entries())
+        console.log('[createCategory] FormData entries:', entries)
+      } catch (e) {
+        console.log('[createCategory] erro ao serializar FormData entries:', e)
+      }
     } catch (err) {
+      console.error('[createCategory] Falha ao ler Request.formData():', err)
       return { error: 'Falha ao ler os dados do formulário (Request.formData())' }
     }
   } else if (typeof input?.get === 'function') {
     // Já é um FormData
     fd = input
+    console.log('[createCategory] input already FormData; entries:', Array.from((fd as FormData).entries()))
   } else if (typeof input === 'object') {
     // Plain object (e.g., JSON)
     fd = input
+    try {
+      console.log('[createCategory] input is plain object:', JSON.stringify(fd))
+    } catch (e) {
+      console.log('[createCategory] input is plain object (non-serializable):', fd)
+    }
   } else {
+    console.log('[createCategory] formato inválido de input:', input)
     return { error: 'Formato dos dados do formulário inválido' }
   }
 
@@ -78,6 +95,7 @@ export async function createCategory(input: any) {
       // Se v for File/Blob, ignorar
       if (typeof File !== 'undefined' && v instanceof File) continue
       const sval = typeof v === 'string' ? v : String(v ?? '')
+      console.log(`[createCategory] entry key=${k} value=${sval}`)
       if (!rawName && isNameKey(k)) rawName = sval
       if (!rawMax && isMaxKey(k)) rawMax = sval
       if (rawName && rawMax) break
@@ -88,6 +106,7 @@ export async function createCategory(input: any) {
       const v = (fd as Record<string, any>)[k]
       if (v == null) continue
       const sval = typeof v === 'string' ? v : String(v)
+      console.log(`[createCategory] object key=${k} value=${sval}`)
       if (!rawName && isNameKey(k)) rawName = sval
       if (!rawMax && isMaxKey(k)) rawMax = sval
       if (rawName && rawMax) break
@@ -122,9 +141,14 @@ export async function createCategory(input: any) {
   const name = rawName ? String(rawName).trim() : ''
   const parsedMax = rawMax !== undefined && rawMax !== null ? parseInt(String(rawMax), 10) : NaN
 
+  console.log('[createCategory] parsed:', { rawName, rawMax, name, parsedMax })
+
   // Validações
   if (!name || name.length < 3) {
-    return { error: 'Nome deve ter pelo menos 3 caracteres' }
+    // Em dev, retorna detalhes para diagnóstico (remova/oculte em produção)
+    const debug = { rawName, rawMax, nameLength: name.length }
+    console.warn('[createCategory] validação falhou:', debug)
+    return { error: 'Nome deve ter pelo menos 3 caracteres', debug }
   }
   const finalMax = Number.isFinite(parsedMax) ? parsedMax : 5
   if (finalMax < 1 || finalMax > 20) {
@@ -150,7 +174,6 @@ export async function createCategory(input: any) {
   }
 
   // --- Verifica duplicado e insere ---
-  // Use .maybeSingle() se disponível; se não, trate erro de "no rows"
   const { data: existing, error: selectError } = await supabase
     .from('categories')
     .select('id')

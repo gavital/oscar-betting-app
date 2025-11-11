@@ -63,8 +63,8 @@ export default function NewCategoryPage() {
           <CardTitle className="text-2xl">Nova Categoria</CardTitle>
         </CardHeader>
         <CardContent>
-          {/* Aqui está a mudança importante: method="post" */}
-          <form action={formAction} method="post" className="space-y-6">
+          {/* Use METHOD em maiúsculas para evitar mismatch com o SSR do Next */}
+          <form action={formAction} method="POST" className="space-y-6">
             <div>
               <Label htmlFor="name">Nome da Categoria</Label>
               <Input
