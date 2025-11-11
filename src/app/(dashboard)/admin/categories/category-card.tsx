@@ -1,11 +1,13 @@
-'use client' // ✅ MARCA COMO CLIENT COMPONENT
+'use client'
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Switch } from '@/components/ui/switch'
 import { Button } from '@/components/ui/button'
 import { Pencil } from 'lucide-react'
 import Link from 'next/link'
-import { toggleCategoryActive } from './actions' // ✅ Importa ação diretamente
+import { toggleCategoryActive } from './actions'
+import { useState } from 'react'
+import { toast } from 'sonner'
 
 interface Category {
   id: string
@@ -15,6 +17,22 @@ interface Category {
 }
 
 export function CategoryCard({ category }: { category: Category }) {
+  const [isActive, setIsActive] = useState(category.is_active)
+
+  const handleToggle = async () => {
+    const newState = !isActive
+    setIsActive(newState) // ✅ Atualiza imediatamente na UI
+
+    const result = await toggleCategoryActive(category.id, isActive)
+    
+    if (result?.error) {
+      toast.error('Erro', { description: result.error })
+      setIsActive(isActive) // ✅ Reverte se falhar
+    } else {
+      toast.success('Sucesso', { description: 'Categoria atualizada' })
+    }
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -26,20 +44,18 @@ export function CategoryCard({ category }: { category: Category }) {
             </CardDescription>
           </div>
           <div className={`h-2 w-2 rounded-full ${
-            category.is_active ? 'bg-green-500' : 'bg-gray-300'
+            isActive ? 'bg-green-500' : 'bg-gray-300'
           }`} />
         </div>
       </CardHeader>
       <CardContent className="flex justify-between">
         <div className="flex items-center space-x-2">
           <Switch
-            checked={category.is_active}
-            onCheckedChange={async () => {
-              await toggleCategoryActive(category.id, category.is_active)
-            }}
+            checked={isActive}
+            onCheckedChange={handleToggle}
           />
           <span className="text-sm">
-            {category.is_active ? 'Ativa' : 'Inativa'}
+            {isActive ? 'Ativa' : 'Inativa'}
           </span>
         </div>
         <Link href={`/admin/categories/${category.id}/edit`}>
