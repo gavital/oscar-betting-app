@@ -1,4 +1,5 @@
 import { Database } from './database'
+import { User } from '@supabase/supabase-js'
 
 export type Tables<T extends keyof Database['public']['Tables']> =
   Database['public']['Tables'][T]['Row']
@@ -6,9 +7,12 @@ export type Tables<T extends keyof Database['public']['Tables']> =
 export type Enums<T extends keyof Database['public']['Enums']> =
   Database['public']['Enums'][T]
 
-export interface UserWithProfile extends Tables<'profiles'> {
-  email: string
-}
+  export interface Profile extends Tables<'profiles'> {}
+
+  export interface UserWithProfile extends User {
+    profile: Profile
+  }
+  
 
 export interface CategoryWithNominees extends Tables<'categories'> {
   nominees: Tables<'nominees'>[]

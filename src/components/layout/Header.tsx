@@ -2,17 +2,43 @@
 
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { User } from '@supabase/supabase-js'
-import { useRouter } from 'next/navigation'
+import { UserCircle } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
 
 interface HeaderProps {
-  user: User | null
+  user: any | null
+}
+
+interface Profile {
+  id: string
+  name: string
+  role: 'user' | 'admin'
+  created_at: string
+  updated_at: string
 }
 
 export function Header({ user }: HeaderProps) {
   const router = useRouter()
   const supabase = createClient()
+  const [profile, setProfile] = useState<Profile | null>(null)
+
+  useEffect(() => {
+    if (user) {
+      // Busca o profile do usuário
+      supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single()
+        .then(({ data, error }) => {
+          if (data && !error) {
+            setProfile(data)
+          }
+        })
+    }
+  }, [user])
 
   const handleSignOut = async () => {
     await supabase.auth.signOut()
@@ -36,7 +62,13 @@ export function Header({ user }: HeaderProps) {
                 <Link href="/ranking">
                   <Button variant="ghost">Ranking</Button>
                 </Link>
-                
+
+                {profile?.role === 'admin' && (
+                  <Link href="/admin/categories">
+                    <Button variant="ghost">Admin</Button>
+                  </Link>
+                )}
+
                 {user.user_metadata?.role === 'admin' && (
                   <Link href="/admin">
                     <Button variant="ghost">Admin</Button>
@@ -46,6 +78,14 @@ export function Header({ user }: HeaderProps) {
                 <Button onClick={handleSignOut} variant="outline">
                   Sair
                 </Button>
+                
+                {/* Avatar/Perfil */}
+                <div className="flex items-center space-x-2">
+                  <UserCircle className="h-8 w-8 text-gray-600" />
+                  <span className="text-sm font-medium text-gray-700">
+                    {profile?.name || user?.email?.split('@')[0] || 'Usuário'}
+                  </span>
+                </div>
               </>
             ) : (
               <>
