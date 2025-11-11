@@ -3,13 +3,12 @@
 import { useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { useToast } from '@/hooks/use-toast'
+import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
 
 export default function ConfirmPage() {
   const searchParams = useSearchParams()
   const email = searchParams.get('email') || ''
-  const { toast } = useToast()
   const supabase = createClient()
 
   const [loading, setLoading] = useState(false)
@@ -29,15 +28,12 @@ export default function ConfirmPage() {
 
       if (error) throw error
 
-      toast({
-        title: 'E-mail reenviado!',
-        description: 'Verifique sua caixa de entrada novamente.',
+      toast.success("Sucesso!", { // ALTERADO
+        description: 'E-mail reenviado! Verifique sua caixa de entrada novamente.',
       })
     } catch (error) {
-      toast({
-        title: 'Erro',
+      toast.error("Erro", { // ALTERADO
         description: 'Não foi possível reenviar o e-mail.',
-        variant: 'destructive',
       })
     } finally {
       setLoading(false)

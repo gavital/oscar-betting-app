@@ -5,13 +5,12 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { useToast } from '@/hooks/use-toast'
+import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 
 export default function RegisterPage() {
   const router = useRouter()
-  const { toast } = useToast()
   const supabase = createClient()
 
   const [loading, setLoading] = useState(false)
@@ -27,20 +26,16 @@ export default function RegisterPage() {
     setLoading(true)
 
     if (formData.password !== formData.confirmPassword) {
-      toast({
-        title: 'Erro',
+      toast.error("Erro", {
         description: 'As senhas não coincidem',
-        variant: 'destructive',
       })
       setLoading(false)
       return
     }
 
     if (formData.password.length < 6) {
-      toast({
-        title: 'Erro',
+      toast.error("Erro", {
         description: 'A senha deve ter pelo menos 6 caracteres',
-        variant: 'destructive',
       })
       setLoading(false)
       return
@@ -62,33 +57,25 @@ export default function RegisterPage() {
 
       if (error) {
         if (error.message.includes('already exists')) {
-          toast({
-            title: 'Erro',
+          toast.error("Erro", { // ALTERADO
             description: 'Este e-mail já está cadastrado',
-            variant: 'destructive',
           })
         } else {
-          toast({
-            title: 'Erro',
+          toast.error("Erro", { // ALTERADO
             description: error.message,
-            variant: 'destructive',
           })
         }
         return
       }
 
-      // Sucesso - redireciona para confirmação
-      toast({
-        title: 'Sucesso!',
-        description: 'Cadastro realizado. Verifique seu e-mail para confirmar.',
+      toast.success("Sucesso!", { // ALTERADO
+        description: 'Cadastro realizado. Verifique seu e-mail.',
       })
-      
+
       router.push(`/confirm?email=${encodeURIComponent(formData.email)}`)
     } catch (error) {
-      toast({
-        title: 'Erro',
+      toast.error("Erro", { // ALTERADO
         description: 'Ocorreu um erro inesperado',
-        variant: 'destructive',
       })
     } finally {
       setLoading(false)

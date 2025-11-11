@@ -5,13 +5,12 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { useToast } from '@/hooks/use-toast'
+import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 
 export default function LoginPage() {
   const router = useRouter()
-  const { toast } = useToast()
   const supabase = createClient()
 
   const [loading, setLoading] = useState(false)
@@ -31,31 +30,27 @@ export default function LoginPage() {
       })
 
       if (error) {
-        toast({
-          title: 'Erro',
+        toast.error("Erro", {
           description: 'E-mail ou senha incorretos',
-          variant: 'destructive',
         })
         return
       }
 
-      toast({
-        title: 'Sucesso!',
+      toast.success("Sucesso!", {
         description: 'Login realizado com sucesso.',
       })
       
       router.push('/')
       router.refresh()
     } catch (error) {
-      toast({
-        title: 'Erro',
+      toast.error("Erro", {
         description: 'Ocorreu um erro inesperado',
-        variant: 'destructive',
       })
     } finally {
       setLoading(false)
     }
   }
+
 
   return (
     <div>
