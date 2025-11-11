@@ -14,7 +14,7 @@ export default function ConfirmPage() {
   const [loading, setLoading] = useState(false)
   const [cooldown, setCooldown] = useState(false)
 
-  const handleResend Email = async () => {
+  const handleResendEmail = async () => {
     if (!email) return
 
     setLoading(true)
@@ -71,7 +71,7 @@ export default function ConfirmPage() {
 
       <div className="mt-6 space-y-4">
         <Button
-          onClick={handleResend}
+          onClick={handleResendEmail}
           variant="outline"
           className="w-full"
           disabled={loading || cooldown}
