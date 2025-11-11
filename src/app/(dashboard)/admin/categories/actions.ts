@@ -5,75 +5,133 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 
 /**
- * Cria nova categoria.
- * Aceita vários formatos de entrada porque, dependendo de como a action é chamada,
- * o parâmetro pode ser:
- * - FormData (o comportamento padrão de <form method="post">)
- * - Request (quando a framework passar um Request-like)
- * - objeto plain { name, max_nominees } (algumas serializações client podem enviar JSON)
- * - null (tratado defensivamente)
+ * createCategory - server action flexível para aceitar:
+ * - Request (await request.formData())
+ * - FormData
+ * - plain object ({ name, max_nominees })
+ *
+ * Também encontra chaves com prefixos (ex: "1_name", "0_max_nominees") que o Next pode gerar.
  */
-export async function createCategory(formData: any) {
+export async function createCategory(input: any) {
   const supabase = await createServerSupabaseClient()
 
-  if (!formData) {
+  // --- Normaliza para FormData-like ou objectMap ---
+  let fd: FormData | Record<string, any> | null = null
+
+  if (!input) {
     return {
       error:
         'Dados do formulário não recebidos. Certifique-se de que o <form> use action={createCategory} e method="post", e que os inputs tenham name.'
     }
   }
 
-  // Se veio um Request-like (possui formData() async), converte para FormData
-  if (typeof formData?.formData === 'function') {
+  // Se for um Request-like (Next frequentemente envia assim)
+  if (typeof input?.formData === 'function') {
     try {
-      formData = await formData.formData()
+      fd = await input.formData()
     } catch (err) {
       return { error: 'Falha ao ler os dados do formulário (Request.formData())' }
     }
-  }
-
-  // Agora, formData pode ser:
-  // - FormData (tem .get)
-  // - plain object ({ name: 'x', max_nominees: '5' })
-  let nameEntry: any = undefined
-  let maxEntry: any = undefined
-
-  if (typeof formData?.get === 'function') {
-    // FormData
-    nameEntry = formData.get('name')
-    maxEntry = formData.get('max_nominees')
-  } else if (typeof formData === 'object') {
-    // plain object - tentar diferentes chaves comuns
-    nameEntry =
-      formData.name ??
-      formData['name'] ??
-      formData.title ?? // fallback se alguém usou outro nome
-      undefined
-
-    maxEntry =
-      formData.max_nominees ??
-      formData['max_nominees'] ??
-      formData.maxNominees ??
-      formData.max ??
-      undefined
+  } else if (typeof input?.get === 'function') {
+    // Já é um FormData
+    fd = input
+  } else if (typeof input === 'object') {
+    // Plain object (e.g., JSON)
+    fd = input
   } else {
     return { error: 'Formato dos dados do formulário inválido' }
   }
 
-  // Normaliza os valores de forma segura
-  const name = typeof nameEntry === 'string' ? nameEntry.trim() : (nameEntry ? String(nameEntry).trim() : '')
-  const maxNominees = parseInt(typeof maxEntry === 'string' ? maxEntry : String(maxEntry ?? ''), 10) || 5
+  // --- Extrai name e maxNominees procurando por chaves comuns e por chaves com prefixos ---
+  let rawName: any = undefined
+  let rawMax: any = undefined
 
-  // Validação básica
+  const isNameKey = (key: string) => {
+    const k = key.toLowerCase()
+    return (
+      k === 'name' ||
+      k === 'title' ||
+      k.endsWith('_name') ||
+      k.endsWith('-name') ||
+      k.endsWith('.name') ||
+      k.endsWith('name')
+    )
+  }
+
+  const isMaxKey = (key: string) => {
+    const k = key.toLowerCase()
+    return (
+      k === 'max_nominees' ||
+      k === 'maxnominees' ||
+      k === 'max' ||
+      k.endsWith('_max_nominees') ||
+      k.endsWith('_max') ||
+      k.endsWith('max_nominees') ||
+      k.endsWith('maxnominees') ||
+      k.endsWith('max')
+    )
+  }
+
+  if (typeof (fd as FormData).entries === 'function') {
+    // fd é FormData
+    for (const [k, v] of (fd as FormData).entries()) {
+      // Se v for File/Blob, ignorar
+      if (typeof File !== 'undefined' && v instanceof File) continue
+      const sval = typeof v === 'string' ? v : String(v ?? '')
+      if (!rawName && isNameKey(k)) rawName = sval
+      if (!rawMax && isMaxKey(k)) rawMax = sval
+      if (rawName && rawMax) break
+    }
+  } else {
+    // fd é plain object
+    for (const k of Object.keys(fd as Record<string, any>)) {
+      const v = (fd as Record<string, any>)[k]
+      if (v == null) continue
+      const sval = typeof v === 'string' ? v : String(v)
+      if (!rawName && isNameKey(k)) rawName = sval
+      if (!rawMax && isMaxKey(k)) rawMax = sval
+      if (rawName && rawMax) break
+    }
+  }
+
+  // Se ainda não encontrou, tente chaves sem prefixo diretamente (compatibilidade extra)
+  if (!rawName) {
+    if (typeof (fd as any).get === 'function') {
+      rawName = (fd as FormData).get('name') ?? (fd as FormData).get('1_name') ?? (fd as FormData).get('0_name')
+    } else {
+      rawName = (fd as Record<string, any>)['name'] ?? (fd as Record<string, any>)['1_name'] ?? (fd as Record<string, any>)['0_name']
+    }
+  }
+  if (!rawMax) {
+    if (typeof (fd as any).get === 'function') {
+      rawMax =
+        (fd as FormData).get('max_nominees') ??
+        (fd as FormData).get('maxNominees') ??
+        (fd as FormData).get('1_max_nominees') ??
+        (fd as FormData).get('max')
+    } else {
+      rawMax =
+        (fd as Record<string, any>)['max_nominees'] ??
+        (fd as Record<string, any>)['maxNominees'] ??
+        (fd as Record<string, any>)['1_max_nominees'] ??
+        (fd as Record<string, any>)['max']
+    }
+  }
+
+  // --- Normaliza valores ---
+  const name = rawName ? String(rawName).trim() : ''
+  const parsedMax = rawMax !== undefined && rawMax !== null ? parseInt(String(rawMax), 10) : NaN
+
+  // Validações
   if (!name || name.length < 3) {
     return { error: 'Nome deve ter pelo menos 3 caracteres' }
   }
-
-  if (maxNominees < 1 || maxNominees > 20) {
+  const finalMax = Number.isFinite(parsedMax) ? parsedMax : 5
+  if (finalMax < 1 || finalMax > 20) {
     return { error: 'Número de indicados deve ser entre 1 e 20' }
   }
 
-  // Verifica usuário e role admin
+  // --- Verifica usuário e role admin ---
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) {
     return { error: 'Usuário não autenticado' }
@@ -87,12 +145,12 @@ export async function createCategory(formData: any) {
   if (profileError) {
     return { error: profileError.message || 'Erro ao verificar perfil' }
   }
-
   if (profile?.role !== 'admin') {
     return { error: 'Acesso negado' }
   }
 
-  // Verifica duplicado (trim aplicado)
+  // --- Verifica duplicado e insere ---
+  // Use .maybeSingle() se disponível; se não, trate erro de "no rows"
   const { data: existing, error: selectError } = await supabase
     .from('categories')
     .select('id')
@@ -102,15 +160,13 @@ export async function createCategory(formData: any) {
   if (selectError) {
     return { error: selectError.message }
   }
-
   if (existing) {
     return { error: 'Categoria já existe' }
   }
 
-  // Cria
   const { error: insertError } = await supabase.from('categories').insert({
     name,
-    max_nominees: maxNominees,
+    max_nominees: finalMax,
     is_active: true,
   })
 
