@@ -13,6 +13,7 @@ import { useFormStatus } from 'react-dom'
 import { toast } from 'sonner'
 import { useEffect } from 'react'
 import { createCategory } from '@/app/(dashboard)/admin/categories/actions'
+import { useRouter } from 'next/navigation'
 
 // Componente de loading
 function SubmitButton() {
@@ -35,19 +36,19 @@ function SubmitButton() {
 }
 
 export default function NewCategoryPage() {
-  const [state, formAction] = useActionState(createCategory, null) // ✅ createCategory
+  const [state, formAction] = useActionState(createCategory, null)
+  const router = useRouter()
 
   useEffect(() => {
     if (state?.error) {
       toast.error('Erro', { description: state.error })
     }
-    if (state?.success) {
+    if (state?.success && state?.id) {
       toast.success('Sucesso', { description: 'Categoria criada!' })
-      setTimeout(() => {
-        window.location.href = '/admin/categories'
-      }, 1500)
+      // Redireciona com highlight
+      router.replace(`/admin/categories?highlight=${state.id}`)
     }
-  }, [state])
+  }, [state, router])
 
   return (
     <div className="space-y-6">
@@ -61,7 +62,6 @@ export default function NewCategoryPage() {
           <CardTitle className="text-2xl">Nova Categoria</CardTitle>
         </CardHeader>
         <CardContent>
-          {/* Remover method/encType com Server Actions */}
           <form action={formAction} className="space-y-6">
             <div>
               <Label htmlFor="name">Nome da Categoria</Label>

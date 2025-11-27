@@ -35,7 +35,7 @@ export function CategoryCard({ category }: { category: Category }) {
   }
 
   return (
-    <Card>
+    <Card id={`category-${category.id}`}>
       <CardHeader>
         <div className="flex justify-between items-start">
           <div className="space-y-1">

@@ -44,139 +44,41 @@ function SubmitButton() {
   )
 }
 
-export function EditCategoryForm({
-  id,
-  initialName,
-  initialMaxNominees,
-  initialIsActive,
-}: {
-  id: string
-  initialName: string
-  initialMaxNominees: number
-  initialIsActive: boolean
-}) {
+export function EditCategoryForm({ category }: { category: { id: string; name: string; max_nominees: number; is_active: boolean } }) {
   const [state, formAction] = useActionState(editCategory, null)
-  const [isActive, setIsActive] = useState(initialIsActive)
-
-  const [nameError, setNameError] = useState<string | null>(null)
-  const [maxError, setMaxError] = useState<string | null>(null)
-  const [formError, setFormError] = useState<string | null>(null)
+  const [active, setActive] = useState<boolean>(category.is_active)
+  const router = useRouter()
 
   useEffect(() => {
-    if (state?.error) {
-      const code = state.error.code
-      const friendly = errorMessages[code] ?? state.error.message
-
-      // Direciona erro para o campo correto, quando aplicável
-      switch (state.error.field) {
-        case 'name':
-          setNameError(friendly)
-          setFormError(null)
-          break
-        case 'max_nominees':
-          setMaxError(friendly)
-          setFormError(null)
-          break
-        default:
-          // Erros não associados a campo específico
-          setFormError(friendly)
-          // Também exibe toast
-          toast.error('Erro', { description: friendly })
-          break
-      }
+    if (!state) return
+    if (state.ok === false && state.error) {
+      toast.error('Erro', { description: state.error.message })
+      return
     }
-
-    if (state?.success || state?.ok) {
-      setNameError(null)
-      setMaxError(null)
-      setFormError(null)
+    if (state.ok === true) {
       toast.success('Sucesso', { description: 'Categoria atualizada!' })
+      router.replace(`/admin/categories?highlight=${category.id}`)
     }
-  }, [state])
-
-  const validateNameClient = (value: string) => {
-    if (!value || value.trim().length < 3) {
-      setNameError(errorMessages.VALIDATION_NAME_MIN_LENGTH)
-    } else {
-      setNameError(null)
-    }
-  }
-
-  const validateMaxClient = (value: string) => {
-    const num = parseInt(value, 10)
-    if (!Number.isFinite(num) || num < 1 || num > 20) {
-      setMaxError(errorMessages.VALIDATION_MAX_RANGE)
-    } else {
-      setMaxError(null)
-    }
-  }
+  }, [state, router, category.id])
 
   return (
     <form action={formAction} className="space-y-6">
-      <input type="hidden" name="id" value={id} />
-
+      <input type="hidden" name="id" value={category.id} />
       <div>
         <Label htmlFor="name">Nome da Categoria</Label>
-        <Input
-          id="name"
-          name="name"
-          required
-          minLength={3}
-          defaultValue={initialName}
-          onChange={(e) => validateNameClient(e.target.value)}
-          aria-invalid={!!nameError}
-          className={clsx(!!nameError && 'border-red-500')}
-          placeholder="Ex: Melhor Filme"
-        />
-        {nameError && (
-          <p className="mt-1 text-sm text-red-600">{nameError}</p>
-        )}
+        <Input id="name" name="name" defaultValue={category.name} required minLength={3} />
       </div>
-
       <div>
         <Label htmlFor="max_nominees">Número Máximo de Indicados</Label>
-        <Input
-          id="max_nominees"
-          name="max_nominees"
-          type="number"
-          required
-          min={1}
-          max={20}
-          defaultValue={String(initialMaxNominees)}
-          onChange={(e) => validateMaxClient(e.target.value)}
-          aria-invalid={!!maxError}
-          className={clsx(!!maxError && 'border-red-500')}
-        />
-        {maxError && (
-          <p className="mt-1 text-sm text-red-600">{maxError}</p>
-        )}
+        <Input id="max_nominees" name="max_nominees" type="number" min={1} max={20} defaultValue={category.max_nominees} required />
       </div>
-
-      <div className="flex items-center gap-3">
-        {/* Mantém o valor no FormData para a Server Action */}
-        <input
-          type="hidden"
-          name="is_active"
-          value={isActive ? 'true' : 'false'}
-        />
-
-        <Switch
-          id="is_active"
-          checked={isActive}
-          onCheckedChange={setIsActive}
-          aria-label="Categoria ativa"
-        />
-        <Label htmlFor="is_active">Categoria ativa</Label>
+      <div className="flex items-center gap-2">
+        <Switch checked={active} onCheckedChange={(v) => setActive(v)} />
+        <input type="hidden" name="is_active" value={String(active)} />
+        <span className="text-sm">{active ? 'Ativa' : 'Inativa'}</span>
       </div>
-
-      {formError && (
-        <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-          {formError}
-        </div>
-      )}
-
       <div className="flex gap-4">
-        <Button type="button" variant="outline" onClick={() => history.back()}>
+        <Button type="button" variant="outline" onClick={() => router.back()}>
           Cancelar
         </Button>
         <SubmitButton />

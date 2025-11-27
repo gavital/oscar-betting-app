@@ -63,23 +63,27 @@ export async function createCategory(
     return { error: 'Categoria já existe' }
   }
 
-  // Inserção
-  const { error: insertError } = await supabase.from('categories').insert({
+  // Inserção (retornando ID)
+  const { data: inserted, error: insertError } = await supabase
+  .from('categories')
+  .insert({
     name,
     max_nominees,
     is_active: true,
   })
+  .select('id') // retorna o id do registro criado
+  .single()
 
-  if (insertError) {
-    return { error: insertError.message }
-  }
-
-  // Revalida listagem
-  revalidatePath('/admin/categories')
-
-  // Importante: não dar redirect aqui; o cliente já faz o redirecionamento após sucesso
-  return { success: true }
+if (insertError) {
+  return { error: insertError.message }
 }
+
+// Revalida listagem
+revalidatePath('/admin/categories')
+
+return { success: true, id: inserted?.id }
+}
+
 
 
 export async function toggleCategoryActive(id: string, nextState: boolean) {

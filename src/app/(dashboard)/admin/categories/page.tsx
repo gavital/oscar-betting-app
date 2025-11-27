@@ -2,12 +2,16 @@ import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { Button } from '@/components/ui/button'
 import { Plus } from 'lucide-react'
 import Link from 'next/link'
-import { CategoryCard } from './category-card' // ✅ Import separado
+import { CategoryCard } from './category-card'
+import { HighlightAndScroll } from './highlight-and-scroll'
 
-export default async function AdminCategoriesPage() {
+export default async function AdminCategoriesPage({
+  searchParams,
+}: {
+  searchParams?: { [key: string]: string | string[] | undefined }
+}) {
   const supabase = await createServerSupabaseClient()
 
-  // Busca categorias ordenadas
   const { data: categories, error } = await supabase
     .from('categories')
     .select('*')
@@ -17,8 +21,15 @@ export default async function AdminCategoriesPage() {
     return <div>Erro ao carregar categorias: {error.message}</div>
   }
 
+  const highlightParam = Array.isArray(searchParams?.highlight)
+    ? searchParams?.highlight[0]
+    : searchParams?.highlight
+
   return (
     <div className="space-y-6">
+      {/* Componente client que destaca e faz scroll para o card */}
+      <HighlightAndScroll highlightId={highlightParam} />
+
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-semibold">Categorias do Oscar</h2>
@@ -34,7 +45,7 @@ export default async function AdminCategoriesPage() {
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {categories?.map((category) => (
-          <CategoryCard key={category.id} category={category} /> // ✅ SEM toggleActive na prop
+          <CategoryCard key={category.id} category={category} />
         ))}
       </div>
     </div>
