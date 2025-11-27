@@ -20,14 +20,15 @@ export function CategoryCard({ category }: { category: Category }) {
   const [isActive, setIsActive] = useState(category.is_active)
 
   const handleToggle = async () => {
-    const newState = !isActive
-    setIsActive(newState) // ✅ Atualiza imediatamente na UI
-
-    const result = await toggleCategoryActive(category.id, isActive)
-    
+    const prevState = isActive
+    const newState = !prevState
+    setIsActive(newState) // otimista na UI
+  
+    const result = await toggleCategoryActive(category.id, newState)
+  
     if (result?.error) {
       toast.error('Erro', { description: result.error })
-      setIsActive(isActive) // ✅ Reverte se falhar
+      setIsActive(prevState) // reverte na UI
     } else {
       toast.success('Sucesso', { description: 'Categoria atualizada' })
     }

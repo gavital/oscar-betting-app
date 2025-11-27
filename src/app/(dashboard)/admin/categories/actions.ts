@@ -200,3 +200,184 @@ export async function createCategory(input: any) {
   revalidatePath('/admin/categories')
   redirect('/admin/categories?created=success')
 }
+
+export async function toggleCategoryActive(id: string, nextState: boolean) {
+  const supabase = await createServerSupabaseClient()
+
+  // Verifica usuário autenticado
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    return { error: 'Usuário não autenticado' }
+  }
+
+  // Verifica role admin
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  if (profileError) {
+    return { error: profileError.message || 'Erro ao verificar perfil' }
+  }
+  if (profile?.role !== 'admin') {
+    return { error: 'Acesso negado' }
+  }
+
+  // Atualiza estado da categoria
+  const { error: updateError } = await supabase
+    .from('categories')
+    .update({ is_active: nextState })
+    .eq('id', id)
+
+  if (updateError) {
+    return { error: updateError.message }
+  }
+
+  // Revalida a página para refletir mudança
+  revalidatePath('/admin/categories')
+
+  return { success: true }
+}
+
+type EditCategoryInput = {
+  id: string
+  name?: string
+  max_nominees?: number
+  is_active?: boolean
+}
+
+/**
+ * editCategory - server action para editar categorias
+ * Requisitos:
+ * - Edita nome e max_nominees
+ * - Valida nome único (sem duplicar com outras categorias)
+ * - Restringe a admins
+ * - Revalida a listagem e página de edição
+ * - Retorna { success | error } sem redirect
+ */
+export async function editCategory(input: any) {
+  const supabase = await createServerSupabaseClient()
+
+  // Normaliza input para FormData ou objeto
+  let fd: FormData | Record<string, any> = input
+  if (typeof input?.formData === 'function') {
+    fd = await input.formData()
+  }
+
+  const getVal = (key: string) =>
+    typeof (fd as any).get === 'function'
+      ? (fd as FormData).get(key)
+      : (fd as Record<string, any>)[key]
+
+  // Extrai campos
+  const rawId = getVal('id') ?? getVal('category_id')
+  const rawName = getVal('name')
+  const rawMax = getVal('max_nominees') ?? getVal('max')
+  const rawActive = getVal('is_active')
+
+  const id = String(rawId ?? '').trim()
+  const name = rawName != null ? String(rawName).trim() : undefined
+  const max_nominees =
+    rawMax != null ? parseInt(String(rawMax), 10) : undefined
+
+  // Converter is_active de entradas típicas de form (checkbox/radio/string)
+  const is_active =
+    rawActive != null
+      ? typeof rawActive === 'string'
+        ? ['true', 'on', '1', 'yes'].includes(rawActive.toLowerCase())
+        : Boolean(rawActive)
+      : undefined
+
+  // Validação: id obrigatório
+  if (!id) {
+    return { error: 'ID da categoria é obrigatório' }
+  }
+
+  // Validações de campos se fornecidos
+  if (name !== undefined && name.length < 3) {
+    return { error: 'Nome deve ter pelo menos 3 caracteres' }
+  }
+  if (
+    max_nominees !== undefined &&
+    (!Number.isFinite(max_nominees) || max_nominees < 1 || max_nominees > 20)
+  ) {
+    return { error: 'Número de indicados deve ser entre 1 e 20' }
+  }
+
+  // Verifica usuário e role admin
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    return { error: 'Usuário não autenticado' }
+  }
+
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  if (profileError) {
+    return { error: profileError.message || 'Erro ao verificar perfil' }
+  }
+  if (profile?.role !== 'admin') {
+    return { error: 'Acesso negado' }
+  }
+
+  // Confirma que a categoria existe
+  const { data: existingCategory, error: findError } = await supabase
+    .from('categories')
+    .select('id')
+    .eq('id', id)
+    .single()
+
+  if (findError) {
+    return { error: findError.message }
+  }
+  if (!existingCategory) {
+    return { error: 'Categoria não encontrada' }
+  }
+
+  // Nome único: se nome fornecido, checa duplicidade em outra categoria
+  if (name !== undefined) {
+    const { data: duplicated, error: dupError } = await supabase
+      .from('categories')
+      .select('id')
+      .eq('name', name)
+      .neq('id', id)
+      .maybeSingle()
+
+    if (dupError) {
+      return { error: dupError.message }
+    }
+    if (duplicated) {
+      return { error: 'Já existe outra categoria com esse nome' }
+    }
+  }
+
+  // Monta payload de atualização apenas com campos presentes
+  const updatePayload: Partial<EditCategoryInput> = {}
+  if (name !== undefined) updatePayload.name = name
+  if (max_nominees !== undefined) updatePayload.max_nominees = max_nominees
+  if (is_active !== undefined) updatePayload.is_active = is_active
+
+  if (Object.keys(updatePayload).length === 0) {
+    return { error: 'Nenhum campo para atualizar foi fornecido' }
+  }
+
+  // Atualiza
+  const { error: updateError } = await supabase
+    .from('categories')
+    .update(updatePayload)
+    .eq('id', id)
+
+  if (updateError) {
+    return { error: updateError.message }
+  }
+
+  // Revalida listagem e (opcional) página de edição
+  revalidatePath('/admin/categories')
+  revalidatePath(`/admin/categories/${id}/edit`)
+
+  return { success: true }
+}
