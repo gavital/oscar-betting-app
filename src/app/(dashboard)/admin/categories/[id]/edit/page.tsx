@@ -1,17 +1,24 @@
+// src/app/(dashboard)/admin/categories/[id]/edit/page.tsx
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { EditCategoryForm } from './EditCategoryForm'
 
-export default async function EditCategoryPage({ params }: { params: { id: string } }) {
+// Note o tipo de params como Promise
+export default async function EditCategoryPage({
+  params,
+}: {
+  params: Promise<{ id: string }>
+}) {
+  const { id } = await params // ✅ Desembrulha a Promise
+
   const supabase = await createServerSupabaseClient()
 
-  // Busca categoria
   const { data: category, error } = await supabase
     .from('categories')
     .select('*')
-    .eq('id', params.id)
+    .eq('id', id)
     .single()
 
   if (error) {
@@ -24,7 +31,10 @@ export default async function EditCategoryPage({ params }: { params: { id: strin
 
   return (
     <div className="space-y-6">
-      <Link href="/admin/categories" className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900">
+      <Link
+        href="/admin/categories"
+        className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900"
+      >
         <ArrowLeft className="mr-2 h-4 w-4" />
         Voltar para Categorias
       </Link>

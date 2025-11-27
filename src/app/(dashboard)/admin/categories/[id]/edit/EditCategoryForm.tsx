@@ -1,14 +1,28 @@
 'use client'
 
-import { useActionState } from 'react'
+import { useActionState, useEffect, useState } from 'react'
 import { useFormStatus } from 'react-dom'
 import { editCategory } from '@/app/(dashboard)/admin/categories/actions'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
-import { useEffect, useState } from 'react'
 import { Save } from 'lucide-react'
+import clsx from 'clsx'
+
+const errorMessages: Record<string, string> = {
+  AUTH_NOT_AUTHENTICATED: 'Faça login para continuar.',
+  AUTH_FORBIDDEN: 'Você não tem permissão para editar categorias.',
+  CATEGORY_NOT_FOUND: 'Categoria não encontrada.',
+  CATEGORY_NAME_DUPLICATE: 'Já existe outra categoria com esse nome.',
+  VALIDATION_ID_REQUIRED: 'ID da categoria é obrigatório.',
+  VALIDATION_NAME_MIN_LENGTH: 'O nome deve ter pelo menos 3 caracteres.',
+  VALIDATION_MAX_RANGE: 'Número de indicados deve ser entre 1 e 20.',
+  VALIDATION_NO_FIELDS: 'Nenhum campo para atualizar foi fornecido.',
+  DB_SELECT_ERROR: 'Erro ao consultar dados. Tente novamente.',
+  DB_UPDATE_ERROR: 'Erro ao salvar alterações. Tente novamente.',
+  UNKNOWN_ERROR: 'Ocorreu um erro inesperado. Tente novamente.',
+}
 
 function SubmitButton() {
   const { pending } = useFormStatus()
@@ -43,14 +57,58 @@ export function EditCategoryForm({
   const [state, formAction] = useActionState(editCategory, null)
   const [isActive, setIsActive] = useState(initialIsActive)
 
+  const [nameError, setNameError] = useState<string | null>(null)
+  const [maxError, setMaxError] = useState<string | null>(null)
+  const [formError, setFormError] = useState<string | null>(null)
+
   useEffect(() => {
     if (state?.error) {
-      toast.error('Erro', { description: state.error })
+      const code = state.error.code
+      const friendly = errorMessages[code] ?? state.error.message
+
+      // Direciona erro para o campo correto, quando aplicável
+      switch (state.error.field) {
+        case 'name':
+          setNameError(friendly)
+          setFormError(null)
+          break
+        case 'max_nominees':
+          setMaxError(friendly)
+          setFormError(null)
+          break
+        default:
+          // Erros não associados a campo específico
+          setFormError(friendly)
+          // Também exibe toast
+          toast.error('Erro', { description: friendly })
+          break
+      }
     }
-    if (state?.success) {
+
+    if (state?.success || state?.ok) {
+      setNameError(null)
+      setMaxError(null)
+      setFormError(null)
       toast.success('Sucesso', { description: 'Categoria atualizada!' })
     }
   }, [state])
+
+  const validateNameClient = (value: string) => {
+    if (!value || value.trim().length < 3) {
+      setNameError(errorMessages.VALIDATION_NAME_MIN_LENGTH)
+    } else {
+      setNameError(null)
+    }
+  }
+
+  const validateMaxClient = (value: string) => {
+    const num = parseInt(value, 10)
+    if (!Number.isFinite(num) || num < 1 || num > 20) {
+      setMaxError(errorMessages.VALIDATION_MAX_RANGE)
+    } else {
+      setMaxError(null)
+    }
+  }
 
   return (
     <form action={formAction} method="POST" className="space-y-6">
@@ -64,8 +122,14 @@ export function EditCategoryForm({
           required
           minLength={3}
           defaultValue={initialName}
+          onChange={(e) => validateNameClient(e.target.value)}
+          aria-invalid={!!nameError}
+          className={clsx(!!nameError && 'border-red-500')}
           placeholder="Ex: Melhor Filme"
         />
+        {nameError && (
+          <p className="mt-1 text-sm text-red-600">{nameError}</p>
+        )}
       </div>
 
       <div>
@@ -78,10 +142,15 @@ export function EditCategoryForm({
           min={1}
           max={20}
           defaultValue={String(initialMaxNominees)}
+          onChange={(e) => validateMaxClient(e.target.value)}
+          aria-invalid={!!maxError}
+          className={clsx(!!maxError && 'border-red-500')}
         />
+        {maxError && (
+          <p className="mt-1 text-sm text-red-600">{maxError}</p>
+        )}
       </div>
 
-      {/* Opcional: permitir alterar status aqui também */}
       <div className="flex items-center gap-3">
         <input
           id="is_active"
@@ -92,6 +161,12 @@ export function EditCategoryForm({
         />
         <Label htmlFor="is_active">Categoria ativa</Label>
       </div>
+
+      {formError && (
+        <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+          {formError}
+        </div>
+      )}
 
       <div className="flex gap-4">
         <Button type="button" variant="outline" onClick={() => history.back()}>

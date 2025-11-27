@@ -247,16 +247,29 @@ type EditCategoryInput = {
   is_active?: boolean
 }
 
-/**
- * editCategory - server action para editar categorias
- * Requisitos:
- * - Edita nome e max_nominees
- * - Valida nome único (sem duplicar com outras categorias)
- * - Restringe a admins
- * - Revalida a listagem e página de edição
- * - Retorna { success | error } sem redirect
- */
-export async function editCategory(input: any) {
+type ActionError = {
+  code:
+    | 'VALIDATION_ID_REQUIRED'
+    | 'VALIDATION_NAME_MIN_LENGTH'
+    | 'VALIDATION_MAX_RANGE'
+    | 'VALIDATION_NO_FIELDS'
+    | 'AUTH_NOT_AUTHENTICATED'
+    | 'AUTH_FORBIDDEN'
+    | 'CATEGORY_NOT_FOUND'
+    | 'CATEGORY_NAME_DUPLICATE'
+    | 'DB_SELECT_ERROR'
+    | 'DB_UPDATE_ERROR'
+    | 'UNKNOWN_ERROR'
+  message: string
+  field?: 'id' | 'name' | 'max_nominees' | 'auth' | 'role'
+  details?: any
+}
+
+type EditCategoryResult =
+  | { ok: true; success: true }
+  | { ok: false; error: ActionError }
+
+export async function editCategory(input: any): Promise<EditCategoryResult> {
   const supabase = await createServerSupabaseClient()
 
   // Normaliza input para FormData ou objeto
@@ -289,26 +302,56 @@ export async function editCategory(input: any) {
         : Boolean(rawActive)
       : undefined
 
-  // Validação: id obrigatório
+  // Validações
   if (!id) {
-    return { error: 'ID da categoria é obrigatório' }
+    return {
+      ok: false,
+      error: {
+        code: 'VALIDATION_ID_REQUIRED',
+        message: 'ID da categoria é obrigatório.',
+        field: 'id',
+      },
+    }
   }
 
-  // Validações de campos se fornecidos
   if (name !== undefined && name.length < 3) {
-    return { error: 'Nome deve ter pelo menos 3 caracteres' }
+    return {
+      ok: false,
+      error: {
+        code: 'VALIDATION_NAME_MIN_LENGTH',
+        message: 'O nome deve ter pelo menos 3 caracteres.',
+        field: 'name',
+        details: { length: name.length },
+      },
+    }
   }
+
   if (
     max_nominees !== undefined &&
     (!Number.isFinite(max_nominees) || max_nominees < 1 || max_nominees > 20)
   ) {
-    return { error: 'Número de indicados deve ser entre 1 e 20' }
+    return {
+      ok: false,
+      error: {
+        code: 'VALIDATION_MAX_RANGE',
+        message: 'Número de indicados deve ser entre 1 e 20.',
+        field: 'max_nominees',
+        details: { value: max_nominees },
+      },
+    }
   }
 
-  // Verifica usuário e role admin
+  // Autenticação / autorização
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) {
-    return { error: 'Usuário não autenticado' }
+    return {
+      ok: false,
+      error: {
+        code: 'AUTH_NOT_AUTHENTICATED',
+        message: 'Faça login para continuar.',
+        field: 'auth',
+      },
+    }
   }
 
   const { data: profile, error: profileError } = await supabase
@@ -318,10 +361,24 @@ export async function editCategory(input: any) {
     .single()
 
   if (profileError) {
-    return { error: profileError.message || 'Erro ao verificar perfil' }
+    return {
+      ok: false,
+      error: {
+        code: 'DB_SELECT_ERROR',
+        message: profileError.message || 'Erro ao verificar perfil.',
+        field: 'role',
+      },
+    }
   }
   if (profile?.role !== 'admin') {
-    return { error: 'Acesso negado' }
+    return {
+      ok: false,
+      error: {
+        code: 'AUTH_FORBIDDEN',
+        message: 'Você não tem permissão para editar categorias.',
+        field: 'role',
+      },
+    }
   }
 
   // Confirma que a categoria existe
@@ -332,13 +389,27 @@ export async function editCategory(input: any) {
     .single()
 
   if (findError) {
-    return { error: findError.message }
+    return {
+      ok: false,
+      error: {
+        code: 'DB_SELECT_ERROR',
+        message: findError.message,
+        field: 'id',
+      },
+    }
   }
   if (!existingCategory) {
-    return { error: 'Categoria não encontrada' }
+    return {
+      ok: false,
+      error: {
+        code: 'CATEGORY_NOT_FOUND',
+        message: 'Categoria não encontrada.',
+        field: 'id',
+      },
+    }
   }
 
-  // Nome único: se nome fornecido, checa duplicidade em outra categoria
+  // Nome único
   if (name !== undefined) {
     const { data: duplicated, error: dupError } = await supabase
       .from('categories')
@@ -348,21 +419,41 @@ export async function editCategory(input: any) {
       .maybeSingle()
 
     if (dupError) {
-      return { error: dupError.message }
+      return {
+        ok: false,
+        error: {
+          code: 'DB_SELECT_ERROR',
+          message: dupError.message,
+          field: 'name',
+        },
+      }
     }
     if (duplicated) {
-      return { error: 'Já existe outra categoria com esse nome' }
+      return {
+        ok: false,
+        error: {
+          code: 'CATEGORY_NAME_DUPLICATE',
+          message: 'Já existe outra categoria com esse nome.',
+          field: 'name',
+        },
+      }
     }
   }
 
-  // Monta payload de atualização apenas com campos presentes
+  // Monta payload parcial
   const updatePayload: Partial<EditCategoryInput> = {}
   if (name !== undefined) updatePayload.name = name
   if (max_nominees !== undefined) updatePayload.max_nominees = max_nominees
   if (is_active !== undefined) updatePayload.is_active = is_active
 
   if (Object.keys(updatePayload).length === 0) {
-    return { error: 'Nenhum campo para atualizar foi fornecido' }
+    return {
+      ok: false,
+      error: {
+        code: 'VALIDATION_NO_FIELDS',
+        message: 'Nenhum campo para atualizar foi fornecido.',
+      },
+    }
   }
 
   // Atualiza
@@ -372,12 +463,18 @@ export async function editCategory(input: any) {
     .eq('id', id)
 
   if (updateError) {
-    return { error: updateError.message }
+    return {
+      ok: false,
+      error: {
+        code: 'DB_UPDATE_ERROR',
+        message: updateError.message,
+      },
+    }
   }
 
-  // Revalida listagem e (opcional) página de edição
+  // Revalida
   revalidatePath('/admin/categories')
   revalidatePath(`/admin/categories/${id}/edit`)
 
-  return { success: true }
+  return { ok: true, success: true }
 }
