@@ -12,7 +12,7 @@ import { useActionState } from 'react'
 import { useFormStatus } from 'react-dom'
 import { toast } from 'sonner'
 import { useEffect } from 'react'
-import { createCategory } from '../actions'
+import { editCategory } from '@/app/(dashboard)/admin/categories/actions'
 
 // Componente de loading
 function SubmitButton() {

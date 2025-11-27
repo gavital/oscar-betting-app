@@ -1,7 +1,7 @@
 'use client'
 
 import { useActionState } from 'react'
-import { editCategory } from '../actions'
+import { editCategory } from '@/app/(dashboard)/admin/categories/actions'
 import { toast } from 'sonner'
 import { useEffect } from 'react'
 
