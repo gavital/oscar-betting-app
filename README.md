@@ -1,36 +1,236 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🎬 Oscar Betting App
 
-## Getting Started
+Aposte com seus amigos nos vencedores do Oscar. Este projeto web permite registrar usuários, gerenciar categorias e indicados, fazer apostas, visualizar ranking e administrar o status de apostas, com autenticação e dados persistidos via Supabase.
 
-First, run the development server:
+## ✨ Recursos Principais
+
+- Registro de usuário com verificação de e-mail (Supabase)
+- Login seguro com feedback de sucesso/erro
+- Proteção de rotas para áreas restritas (bets, ranking, admin)
+- Gestão de categorias (Admin): listar e criar categorias
+- Tipagem forte do banco de dados (Supabase types)
+- UI moderna com Tailwind v4 e shadcn
+
+Planejadas (conforme requisitos):
+- Gestão de Indicados (Admin) com importação rápida e enriquecimento IMDB
+- Registro de Apostas (Usuário) com visual atraente e dados IMDB
+- Gestão de Apostas (Usuário): editar e filtrar apostas
+- Visualização de Apostas de Outros Participantes
+- Registro de Vencedores (Admin)
+- Ranking de Usuários
+- Interrupção de Apostas (Admin)
+- Homepage com dashboard e estatísticas
+- Perfil do Usuário
+
+## 🏗️ Arquitetura
+
+- Next.js App Router em `src/app`
+  - Autenticação:
+    - `src/app/(auth)/login/page.tsx`
+    - `src/app/(auth)/register/page.tsx`
+    - `src/app/(auth)/confirm/page.tsx`
+  - API Routes:
+    - `src/app/api/auth/callback/route.ts` (exchange de código de e-mail magic link)
+    - `src/app/api/auth/signout/route.ts`
+  - Admin:
+    - `src/app/(dashboard)/admin/layout.tsx` (verifica role admin)
+    - `src/app/(dashboard)/admin/categories/page.tsx` (listar)
+    - `src/app/(dashboard)/admin/categories/new/page.tsx` (criar)
+    - `src/app/(dashboard)/admin/categories/actions.ts` (Server Action: createCategory)
+  - Layout global:
+    - `src/app/layout.tsx` (providers e Toaster)
+  - Página inicial temporária:
+    - `src/app/page.tsx` (template padrão Next)
+- Middleware:
+  - `src/middleware.ts` protege /bets, /admin, /ranking e controla acesso às rotas de auth
+- Supabase:
+  - `src/lib/supabase/client.ts` (browser)
+  - `src/lib/supabase/server.ts` (SSR + cookies)
+  - `src/providers/SupabaseProvider.tsx`, `src/providers/TanstackProvider.tsx`
+- UI e estilo:
+  - `src/app/globals.css` (tokens e tema Tailwind v4)
+  - `components.json` (config do shadcn)
+  - `src/components/layout/Header.tsx` e `Footer.tsx`
+- Tipagem do banco:
+  - `src/types/database.ts` com tabelas: profiles, categories, nominees, bets, app_settings
+
+## 🧩 Modelo de Dados (Supabase)
+
+Tabelas-chave em `src/types/database.ts`:
+- profiles: id, name, role (user/admin), timestamps
+- categories: id, name, max_nominees, is_active
+- nominees: id, category_id, name, imdb_id, imdb_data, is_winner
+- bets: id, user_id, category_id, nominee_id
+- app_settings: key/value (ex.: status de apostas e mensagens)
+
+## 🚀 Começando
+
+### Pré-requisitos
+- Node.js 18+ (recomendado 20+)
+- Conta Supabase com projeto e Postgres
+- Variáveis de ambiente configuradas
+
+### Instalação
+
+```bash
+git clone https://github.com/gavital/oscar-betting-app.git
+cd oscar-betting-app
+npm install
+```
+
+### Variáveis de Ambiente
+
+Crie `.env.local` na raiz:
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://<sua-instancia>.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<sua-anon-key>
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+```
+
+- NEXT_PUBLIC_SUPABASE_URL e ANON_KEY são usados tanto no client quanto no server (SSR) via @supabase/ssr
+
+### Desenvolvimento
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Acesse http://localhost:3000
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Build e Produção
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run build
+npm start
+```
 
-## Learn More
+Deploy recomendado: Vercel (Next.js 16).
 
-To learn more about Next.js, take a look at the following resources:
+## 🔐 Autenticação e Proteção de Rotas
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- Autenticação com Supabase (email/senha)
+- Email de confirmação enviado no registro; página de confirmação em `/confirm?email=<email>`
+- Middleware (`src/middleware.ts`):
+  - Protege `/bets`, `/admin`, `/ranking` para usuários autenticados
+  - Impede acesso a `/login`, `/register`, `/confirm` se já estiver logado
+- API routes:
+  - `GET /api/auth/callback` troca código por sessão (redirect do email)
+  - `POST /api/auth/signout` encerra sessão e redireciona
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 👩‍💻 Funcionalidades por Perfil
 
-## Deploy on Vercel
+Usuário:
+- Registro, Login, Confirmação de Email
+- Futuro: Minhas Apostas, Visualização e Edição de Apostas, Ranking, Perfil
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Admin:
+- Gestão de Categorias (listagem e criação já implementadas)
+- Futuro: Gestão de Indicados, Registro de Vencedores, Controle de Apostas (abertas/fechadas)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 🧭 Mapeamento dos Requisitos para Implementação
+
+1. Registro de Usuário
+   - Implementado: tela de registro, verificação por e-mail, resend com cooldown (30s), feedback visual
+   - Pendente: email ao alterar senha (trilho via Supabase Auth e hooks de update)
+
+2. Login Seguro
+   - Implementado: tela de login com feedback e redirecionamento
+   - Pendente: fluxo “Esqueci minha senha” (link existe; implementar rota e UI)
+
+3. Gestão de Categorias (Admin)
+   - Implementado: listar, criar, validação de duplicados
+   - Pendente: editar, ativar/desativar (toggleCategoryActive), validação adicional
+
+4. Gestão de Indicados (Admin)
+   - Pendente: CRUD, importação em massa, integração IMDB
+
+5. Registro de Apostas
+   - Pendente: UI por categoria, seleção de indicado, confirmação e progresso
+
+6. Gestão de Apostas (Usuário)
+   - Pendente: listagem, edição, filtros, status visual
+
+7. Visualização de Apostas de Outros
+   - Pendente: ranking detalhado e comparação
+
+8. Registro de Vencedores (Admin)
+   - Pendente: registrar vencedor por categoria, navegação rápida
+
+9. Ranking de Usuários
+   - Pendente: cálculo e exibição de pódio e lista
+
+10. Interrupção de Apostas (Admin)
+   - Pendente: status global (app_settings), notificações e agendamento
+
+11. Homepage
+   - Pendente: dashboard com status do Oscar, estatísticas, pódio e ações rápidas
+
+12. Perfil do Usuário
+   - Pendente: visualização e edição de dados, segurança e notificações
+
+## 🛠️ Tecnologias
+
+- Next.js 16, React 19
+- Supabase (auth, PostgREST / @supabase/ssr)
+- Tailwind CSS v4
+- TanStack React Query
+- shadcn UI
+- lucide-react (ícones)
+- zod, react-hook-form (validação e forms)
+
+## 📚 Padrões e Convenções
+
+- Server Actions para operações no Admin (ex.: `createCategory`)
+- SSR + Cookies para Supabase (helpers em `src/lib/supabase/server.ts`)
+- Providers no layout (`SupabaseProvider`, `TanstackProvider`)
+- Tipos fortes do banco gerados em `src/types/database.ts`
+- Rotas App Router em `src/app`, com agrupadores por segmento `(auth)`, `(dashboard)`
+
+## 🧪 Testes (sugestão)
+
+- Unitários:
+  - Validação de formulários (registro/login)
+  - Funções utilitárias (parse/normalização em actions)
+- Integração:
+  - Fluxo de registro + confirmação
+  - Server Actions do Admin (createCategory)
+- E2E:
+  - Cypress/Playwright para navegação entre rotas protegidas, login e fluxo básico
+
+## 🔒 Segurança e Boas Práticas
+
+- Não commitar segredos (use `.env.local`)
+- HTTPS em produção
+- Cooldown no reenvio de e-mail de confirmação (implementado: 30s)
+- Validação de entrada e feedback claro ao usuário
+- Princípios SOLID e separação de responsabilidades (UI vs ações do servidor)
+- Evitar duplicações (categorias/indicados)
+- Sanitização e autorização consistente baseada em `profiles.role`
+
+## 📦 Scripts
+
+- `npm run dev`: desenvolvimento
+- `npm run build`: build para produção
+- `npm start`: servidor de produção
+- `npm run lint`: linting
+
+## 🗺️ Roadmap
+
+- Implementar `toggleCategoryActive` para Admin
+- Implementar gestão completa de Indicados com importação e IMDB
+- Construir páginas de Apostas e Minhas Apostas
+- Registrar Vencedores e atualizar o Ranking
+- Página de Ranking com pódio e detalhes por usuário
+- Controle de Apostas (abertas/fechadas) com agendamento e mensagem
+- Homepage com estatísticas e conteúdo IMDB
+- Perfil do usuário e “Esqueci minha senha”
+- Suite de testes e documentação de API interna
+
+## 🤝 Contribuição
+
+Contribuições são bem-vindas! Abra issues e pull requests com descrições claras. Siga o estilo do projeto e mantenha a segurança e qualidade do código.
+
+## 📄 Licença
+
+Nenhuma licença especificada no momento. Recomenda-se adicionar um arquivo LICENSE para clarificar o uso.
