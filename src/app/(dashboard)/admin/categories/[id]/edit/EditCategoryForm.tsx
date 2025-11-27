@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import { Save } from 'lucide-react'
 import clsx from 'clsx'
+import { Switch } from '@/components/ui/switch'
 
 const errorMessages: Record<string, string> = {
   AUTH_NOT_AUTHENTICATED: 'Faça login para continuar.',
@@ -152,12 +153,18 @@ export function EditCategoryForm({
       </div>
 
       <div className="flex items-center gap-3">
+        {/* Mantém o valor no FormData para a Server Action */}
         <input
-          id="is_active"
+          type="hidden"
           name="is_active"
-          type="checkbox"
+          value={isActive ? 'true' : 'false'}
+        />
+
+        <Switch
+          id="is_active"
           checked={isActive}
-          onChange={(e) => setIsActive(e.target.checked)}
+          onCheckedChange={setIsActive}
+          aria-label="Categoria ativa"
         />
         <Label htmlFor="is_active">Categoria ativa</Label>
       </div>
