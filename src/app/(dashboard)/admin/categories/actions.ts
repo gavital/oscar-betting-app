@@ -269,19 +269,15 @@ type EditCategoryResult =
   | { ok: true; success: true }
   | { ok: false; error: ActionError }
 
-export async function editCategory(input: any): Promise<EditCategoryResult> {
+// ✅ Ajuste: dois parâmetros (prevState, formData) para compatibilidade com useActionState
+export async function editCategory(
+  _prevState: any,
+  formData: FormData
+): Promise<EditCategoryResult> {
   const supabase = await createServerSupabaseClient()
 
-  // Normaliza input para FormData ou objeto
-  let fd: FormData | Record<string, any> = input
-  if (typeof input?.formData === 'function') {
-    fd = await input.formData()
-  }
-
-  const getVal = (key: string) =>
-    typeof (fd as any).get === 'function'
-      ? (fd as FormData).get(key)
-      : (fd as Record<string, any>)[key]
+  // Helpers para leitura segura de FormData
+  const getVal = (key: string) => formData.get(key)
 
   // Extrai campos
   const rawId = getVal('id') ?? getVal('category_id')
@@ -294,7 +290,7 @@ export async function editCategory(input: any): Promise<EditCategoryResult> {
   const max_nominees =
     rawMax != null ? parseInt(String(rawMax), 10) : undefined
 
-  // Converter is_active de entradas típicas de form (checkbox/radio/string)
+  // Converter is_active de checkbox/string para boolean
   const is_active =
     rawActive != null
       ? typeof rawActive === 'string'
@@ -409,7 +405,7 @@ export async function editCategory(input: any): Promise<EditCategoryResult> {
     }
   }
 
-  // Nome único
+  // Nome único (se fornecido)
   if (name !== undefined) {
     const { data: duplicated, error: dupError } = await supabase
       .from('categories')
