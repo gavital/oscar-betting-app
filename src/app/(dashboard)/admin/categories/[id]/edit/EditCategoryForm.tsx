@@ -111,7 +111,7 @@ export function EditCategoryForm({
   }
 
   return (
-    <form action={formAction} method="POST" className="space-y-6">
+    <form action={formAction} className="space-y-6">
       <input type="hidden" name="id" value={id} />
 
       <div>
