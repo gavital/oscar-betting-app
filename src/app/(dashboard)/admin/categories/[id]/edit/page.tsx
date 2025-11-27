@@ -1,23 +1,47 @@
-'use client'
+import { createServerSupabaseClient } from '@/lib/supabase/server'
+import Link from 'next/link'
+import { ArrowLeft } from 'lucide-react'
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
+import { EditCategoryForm } from './EditCategoryForm'
 
-import { useActionState } from 'react'
-import { editCategory } from '@/app/(dashboard)/admin/categories/actions'
-import { toast } from 'sonner'
-import { useEffect } from 'react'
+export default async function EditCategoryPage({ params }: { params: { id: string } }) {
+  const supabase = await createServerSupabaseClient()
 
-export default function EditCategoryPage({ params }: { params: { id: string } }) {
-  const [state, formAction] = useActionState(editCategory, null)
+  // Busca categoria
+  const { data: category, error } = await supabase
+    .from('categories')
+    .select('*')
+    .eq('id', params.id)
+    .single()
 
-  useEffect(() => {
-    if (state?.error) toast.error('Erro', { description: state.error })
-    if (state?.success) toast.success('Sucesso', { description: 'Categoria atualizada!' })
-  }, [state])
+  if (error) {
+    return <div>Erro ao carregar categoria: {error.message}</div>
+  }
+
+  if (!category) {
+    return <div>Categoria não encontrada</div>
+  }
 
   return (
-    <form action={formAction} method="POST" className="space-y-6">
-      <input type="hidden" name="id" value={params.id} />
-      {/* inputs para name e max_nominees */}
-      {/* botão submit */}
-    </form>
+    <div className="space-y-6">
+      <Link href="/admin/categories" className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900">
+        <ArrowLeft className="mr-2 h-4 w-4" />
+        Voltar para Categorias
+      </Link>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-2xl">Editar Categoria</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <EditCategoryForm
+            id={category.id}
+            initialName={category.name}
+            initialMaxNominees={category.max_nominees}
+            initialIsActive={category.is_active}
+          />
+        </CardContent>
+      </Card>
+    </div>
   )
 }
