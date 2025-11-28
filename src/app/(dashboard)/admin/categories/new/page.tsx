@@ -40,13 +40,13 @@ export default function NewCategoryPage() {
   const router = useRouter()
 
   useEffect(() => {
-    if (state?.error) {
-      toast.error('Erro', { description: state.error })
+    if (!state) return
+    if (state.ok === false && state.error) {
+      toast.error('Erro', { description: state.error.message })
     }
-    if (state?.success && state?.id) {
+    if (state.ok === true && state.data?.id) {
       toast.success('Sucesso', { description: 'Categoria criada!' })
-      // Redireciona com highlight
-      router.replace(`/admin/categories?highlight=${state.id}`)
+      router.replace(`/admin/categories?highlight=${state.data.id}`)
     }
   }, [state, router])
 

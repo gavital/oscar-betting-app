@@ -26,9 +26,9 @@ export function CategoryCard({ category }: { category: Category }) {
   
     const result = await toggleCategoryActive(category.id, newState)
   
-    if (result?.error) {
-      toast.error('Erro', { description: result.error })
-      setIsActive(prevState) // reverte na UI
+    if (result.ok === false) {
+      toast.error('Erro', { description: result.error.message })
+      setIsActive(prevState) // rollback
     } else {
       toast.success('Sucesso', { description: 'Categoria atualizada' })
     }
