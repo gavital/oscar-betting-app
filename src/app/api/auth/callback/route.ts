@@ -6,9 +6,9 @@ export async function GET(request: Request) {
   const code = requestUrl.searchParams.get('code')
 
   if (code) {
-    const supabase = createServerSupabaseClient()
+    const supabase = await createServerSupabaseClient()
     await supabase.auth.exchangeCodeForSession(code)
   }
 
-  return NextResponse.redirect(requestUrl.origin)
+  return NextResponse.redirect(new URL('/', process.env.NEXT_PUBLIC_APP_URL))
 }

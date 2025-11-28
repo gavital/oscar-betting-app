@@ -49,11 +49,12 @@ export default function RegisterPage() {
         options: {
           data: {
             name: formData.name,
-            role: 'user', // Role padrão
+            role: 'user',
           },
-          emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback`,
+          // Ajuste do path
+          emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/callback`,
         },
-      })
+      })     
 
       if (error) {
         if (error.message.includes('already exists')) {
