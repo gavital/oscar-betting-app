@@ -227,8 +227,15 @@ export async function toggleCategoryActiveAction(
   formData: FormData
 ): Promise<ActionResult> {
   const id = String(formData.get('id') || '')
-  const nextStateRaw = String(formData.get('nextState') || '')
-  const nextState = nextStateRaw === 'true'
+
+  // Checkbox nativo: quando marcado -> "on"; quando desmarcado -> null (não existe key)
+  const raw = formData.get('nextState')
+  const nextState =
+    raw == null
+      ? false
+      : typeof raw === 'string'
+        ? ['true', 'on', '1', 'yes'].includes(raw.toLowerCase())
+        : Boolean(raw)
 
   if (!id) {
     return {

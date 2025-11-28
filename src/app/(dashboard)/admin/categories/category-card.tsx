@@ -5,7 +5,6 @@ import { Switch } from '@/components/ui/switch'
 import { Button } from '@/components/ui/button'
 import { Pencil } from 'lucide-react'
 import Link from 'next/link'
-// import { toast } from 'sonner'
 import { showErrorToast, showSuccessToast } from '@/lib/ui/messages'
 import { toggleCategoryActiveAction } from './actions'
 import { useActionState, useEffect, useState } from 'react'
@@ -21,7 +20,6 @@ export function CategoryCard({ category }: { category: Category }) {
   const [isActive, setIsActive] = useState(category.is_active)
   const [pending, setPending] = useState(false)
   const [state, formAction] = useActionState(toggleCategoryActiveAction, null)
-
 
   // Feedback centralizado pós resposta do servidor
   useEffect(() => {
@@ -39,17 +37,19 @@ export function CategoryCard({ category }: { category: Category }) {
     }
   }, [state])
 
-  const handleToggle = (checked: boolean) => {
-    // UI otimista
-    setIsActive(checked)
-    setPending(true)
+  // const handleToggle = (checked: boolean) => {
+  //   // UI otimista
+  //   setIsActive(checked)
+  //   setPending(true)
 
-    // Monta FormData programaticamente (sem useRef/form)
-    const fd = new FormData()
-    fd.set('id', category.id)
-    fd.set('nextState', String(checked))
-    formAction(fd)
-  }
+  //   // Monta FormData programaticamente (sem useRef/form)
+  //   const fd = new FormData()
+  //   fd.set('id', category.id)
+  //   fd.set('nextState', String(checked))
+  //   formAction(fd)
+  // }
+
+  const checkboxId = `nextState-${category.id}`
 
   return (
     <Card id={`category-${category.id}`}>
@@ -64,14 +64,36 @@ export function CategoryCard({ category }: { category: Category }) {
       </CardHeader>
 
       <CardContent className="flex justify-between">
-        <div className="flex items-center space-x-2">
-          <Switch
+        {/* Form nativo com checkbox invisível e label que enrola o Switch */}
+        <form action={formAction} className="flex items-center space-x-2">
+          <input type="hidden" name="id" value={category.id} />
+
+          {/* Checkbox nativo controlado */}
+          <input
+            id={checkboxId}
+            type="checkbox"
+            name="nextState"
             checked={isActive}
-            onCheckedChange={handleToggle}
-            disabled={pending}
+            onChange={(e) => {
+              const checked = e.target.checked
+              setIsActive(checked)
+              setPending(true)
+              e.currentTarget.form?.requestSubmit()
+            }}
+            className="sr-only"
+            aria-hidden="true"
+            tabIndex={-1}
           />
-          <span className="text-sm">{isActive ? 'Ativa' : 'Inativa'}</span>
-        </div>
+
+          {/* Label associada ao checkbox: clicar no Switch toggla o checkbox */}
+          <label htmlFor={checkboxId} className="flex items-center space-x-2 cursor-pointer">
+            <Switch checked={isActive} disabled={pending} />
+            <span className="text-sm">{isActive ? 'Ativa' : 'Inativa'}</span>
+          </label>
+
+          {/* Fallback de acessibilidade/progressive enhancement */}
+          <button type="submit" className="sr-only">Salvar</button>
+        </form>
 
         <Link href={`/admin/categories/${category.id}/edit`}>
           <Button variant="ghost" size="sm">
