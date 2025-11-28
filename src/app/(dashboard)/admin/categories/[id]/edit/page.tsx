@@ -1,19 +1,17 @@
-// src/app/(dashboard)/admin/categories/[id]/edit/page.tsx
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { EditCategoryForm } from './EditCategoryForm'
 import { notFound } from 'next/navigation'
-import { showErrorToast, showSuccessToast } from '@/lib/ui/messages'
 
 
 export default async function EditCategoryPage({
   params,
 }: {
-  params: { id: string } // ✅ params NÃO é Promise
+  params: Promise<{ id: string }>
 }) {
-  const { id } = params // ✅ não precisa await
+  const { id } = await params
 
   const supabase = await createServerSupabaseClient()
   const { data: category, error } = await supabase
@@ -41,7 +39,6 @@ export default async function EditCategoryPage({
           <CardTitle className="text-2xl">Editar Categoria</CardTitle>
         </CardHeader>
         <CardContent>
-          {/* ✅ passar a prop category inteira, como o componente espera */}
           <EditCategoryForm category={category} />
         </CardContent>
       </Card>
