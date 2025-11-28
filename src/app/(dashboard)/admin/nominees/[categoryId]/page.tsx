@@ -1,14 +1,18 @@
 // src/app/(dashboard)/admin/nominees/[categoryId]/page.tsx
 import { createServerSupabaseClient } from '@/lib/supabase/server'
-import { importNominees, createNominee, updateNominee, deleteNominee, enrichNomineeWithOmdb } from './actions'
+import { importNominees, createNominee, updateNominee, deleteNominee, enrichNomineeWithOmdb } from '../actions'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
-export default async function ManageNomineesPage({ params }: { params: { categoryId: string } }) {
+export default async function ManageNomineesPage({
+  params,
+}: {
+  params: Promise<{ categoryId: string }>
+}) {
+  const { categoryId } = await params
   const supabase = await createServerSupabaseClient()
-  const categoryId = params.categoryId
 
   const { data: category, error: catErr } = await supabase
     .from('categories')
@@ -22,8 +26,8 @@ export default async function ManageNomineesPage({ params }: { params: { categor
     .eq('category_id', categoryId)
     .order('name')
 
-  if (catErr) {
-    return <p className="text-red-600 text-sm">Erro ao carregar categoria: {catErr.message}</p>
+  if (catErr || !category) {
+    return <p className="text-red-600 text-sm">Erro ao carregar categoria: {catErr?.message ?? 'Não encontrada'}</p>
   }
 
   const count = nominees?.length ?? 0
