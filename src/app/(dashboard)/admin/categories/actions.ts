@@ -264,7 +264,7 @@ type EditCategoryInput = {
 export async function editCategory(
   _prevState: any,
   formData: FormData
-): Promise<ActionResult> {
+): Promise<ActionResult<{ id: string }>> {
   const supabase = await createServerSupabaseClient()
 
   // Helpers para leitura segura de FormData
@@ -463,6 +463,6 @@ export async function editCategory(
   revalidatePath('/admin/categories')
   revalidatePath(`/admin/categories/${id}/edit`)
 
-  return { ok: true }
+  return { ok: true, data: { id } }
 
 }

@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button'
 import { Plus } from 'lucide-react'
 import Link from 'next/link'
 import { CategoryCard } from './category-card'
-import { HighlightAndScroll } from './highlight-and-scroll'
+import { HighlightAndScroll } from './HighlightAndScroll'
 
 export default async function AdminCategoriesPage({
   searchParams,
