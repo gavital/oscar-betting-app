@@ -1,10 +1,10 @@
-// src/app/(dashboard)/admin/nominees/[categoryId]/page.tsx
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { importNominees, createNominee, updateNominee, deleteNominee, enrichNomineeWithOmdb } from '../actions'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { ConfirmDeleteNomineeForm } from '../_components/ConfirmDeleteNomineeForm'
 
 export default async function ManageNomineesPage({
   params,
@@ -107,13 +107,7 @@ export default async function ManageNomineesPage({
                   <Button variant="outline" className="text-sm">Salvar</Button>
                 </form>
 
-                <form
-                  action={deleteNominee}
-                  onSubmit={(e) => { if (!confirm('Confirmar remoção do indicado?')) e.preventDefault() }}
-                >
-                  <input type="hidden" name="id" value={n.id} />
-                  <Button variant="destructive" className="text-sm">Excluir</Button>
-                </form>
+                <ConfirmDeleteNomineeForm id={n.id} />
               </div>
             </li>
           ))}
