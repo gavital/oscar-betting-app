@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
@@ -79,12 +79,12 @@ export default function ConfirmPage() {
           {loading
             ? 'Reenviando...'
             : cooldown
-            ? 'Aguarde 30 segundos'
-            : 'Reenviar e-mail de confirmação'}
+              ? 'Aguarde 30 segundos'
+              : 'Reenviar e-mail de confirmação'}
         </Button>
 
         <Button
-          onClick={() => window.location.href = '/login'}
+          onClick={() => router.push('/login')}
           className="w-full"
         >
           Continuar para login

@@ -69,16 +69,10 @@ export function Header({ user }: HeaderProps) {
                   </Link>
                 )}
 
-                {user.user_metadata?.role === 'admin' && (
-                  <Link href="/admin">
-                    <Button variant="ghost">Admin</Button>
-                  </Link>
-                )}
-
                 <Button onClick={handleSignOut} variant="outline">
                   Sair
                 </Button>
-                
+
                 {/* Avatar/Perfil */}
                 <div className="flex items-center space-x-2">
                   <UserCircle className="h-8 w-8 text-gray-600" />
