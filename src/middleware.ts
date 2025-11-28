@@ -37,7 +37,7 @@ export async function middleware(request: NextRequest) {
 
   // Rotas protegidas
   const protectedRoutes = ['/bets', '/admin', '/ranking']
-  const authRoutes = ['/login', '/register', '/confirm']
+  const authRoutes = ['/login', '/register', '/confirm', '/forgot-password', '/reset-password']
 
   const pathname = request.nextUrl.pathname
 
