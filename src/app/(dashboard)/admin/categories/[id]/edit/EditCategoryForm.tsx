@@ -10,6 +10,7 @@ import { toast } from 'sonner'
 import { Save } from 'lucide-react'
 import { Switch } from '@/components/ui/switch'
 import { useRouter } from 'next/navigation'
+import { showErrorToast, showSuccessToast } from '@/lib/ui/messages'
 
 const errorMessages: Record<string, string> = {
   AUTH_NOT_AUTHENTICATED: 'Faça login para continuar.',
@@ -57,11 +58,10 @@ export function EditCategoryForm({
   useEffect(() => {
     if (!state) return
     if (state.ok === false && state.error) {
-      toast.error('Erro', { description: state.error.message })
-      return
+      showErrorToast(state.error)
     }
-    if (state.ok === true) {
-      toast.success('Sucesso', { description: 'Categoria atualizada!' })
+    if (state.ok === true && state.data?.id) {
+      showSuccessToast('Categoria atualizada!')
       router.replace(`/admin/categories?highlight=${category.id}`)
     }
   }, [state, router, category.id])

@@ -222,6 +222,30 @@ export async function toggleCategoryActive(
   return { ok: true }
 }
 
+export async function toggleCategoryActiveAction(
+  _prevState: any,
+  formData: FormData
+): Promise<ActionResult> {
+  const id = String(formData.get('id') || '')
+  const nextStateRaw = String(formData.get('nextState') || '')
+  const nextState = nextStateRaw === 'true'
+
+  if (!id) {
+    return {
+      ok: false,
+      error: {
+        code: 'VALIDATION_ID_REQUIRED',
+        message: 'ID da categoria é obrigatório',
+        field: 'id',
+      },
+    }
+  }
+
+  // Reutiliza a lógica da função existente
+  return await toggleCategoryActive(id, nextState)
+}
+
+
 type EditCategoryInput = {
   id: string
   name?: string

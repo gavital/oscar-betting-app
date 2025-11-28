@@ -1,7 +1,5 @@
 'use client'
 
-import { createServerSupabaseClient } from '@/lib/supabase/server'
-import { redirect } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -14,6 +12,7 @@ import { toast } from 'sonner'
 import { useEffect } from 'react'
 import { createCategory } from '@/app/(dashboard)/admin/categories/actions'
 import { useRouter } from 'next/navigation'
+import { showErrorToast, showSuccessToast } from '@/lib/ui/messages'
 
 // Componente de loading
 function SubmitButton() {
@@ -42,10 +41,10 @@ export default function NewCategoryPage() {
   useEffect(() => {
     if (!state) return
     if (state.ok === false && state.error) {
-      toast.error('Erro', { description: state.error.message })
+      showErrorToast(state.error)
     }
     if (state.ok === true && state.data?.id) {
-      toast.success('Sucesso', { description: 'Categoria criada!' })
+      showSuccessToast('Categoria criada!')
       router.replace(`/admin/categories?highlight=${state.data.id}`)
     }
   }, [state, router])

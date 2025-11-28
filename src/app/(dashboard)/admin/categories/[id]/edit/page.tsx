@@ -4,7 +4,9 @@ import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { EditCategoryForm } from './EditCategoryForm'
-import { notFound } from 'next/navigation' // ✅ importar notFound
+import { notFound } from 'next/navigation'
+import { showErrorToast, showSuccessToast } from '@/lib/ui/messages'
+
 
 export default async function EditCategoryPage({
   params,
