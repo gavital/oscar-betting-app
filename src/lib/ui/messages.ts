@@ -19,6 +19,12 @@ export function getErrorMessage(error: ActionError): string {
     case 'DB_INSERT_ERROR':
     case 'DB_UPDATE_ERROR':
       return 'Ocorreu um erro ao acessar o banco de dados. Tente novamente.'
+    case 'NOMINEE_NAME_DUPLICATE':
+      return 'Já existe um indicado com este nome na categoria.'
+    case 'LIMIT_EXCEEDED':
+      return 'Você atingiu o limite de indicados para esta categoria.'
+    case 'HAS_ASSOCIATED_BETS':
+      return 'Indicado possui apostas associadas e não pode ser removido.'
     default:
       return error.message || 'Ocorreu um erro inesperado.'
   }

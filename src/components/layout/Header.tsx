@@ -64,9 +64,14 @@ export function Header({ user }: HeaderProps) {
                 </Link>
 
                 {profile?.role === 'admin' && (
-                  <Link href="/admin/categories">
-                    <Button variant="ghost">Admin</Button>
-                  </Link>
+                  <>
+                    <Link href="/admin/categories">
+                      <Button variant="ghost">Admin: Categorias</Button>
+                    </Link>
+                    <Link href="/admin/nominees">
+                      <Button variant="ghost">Admin: Indicados</Button>
+                    </Link>
+                  </>
                 )}
 
                 <Button onClick={handleSignOut} variant="outline">
