@@ -43,7 +43,7 @@ async function requireAdmin() {
   return { supabase }
 }
 
-export async function importNominees(_prev: any, formData: FormData): Promise<ActionResult<{ imported: number; removedDuplicates: number; truncated: number }>> {
+export async function importNominees(formData: FormData): Promise<ActionResult<{ imported: number; removedDuplicates: number; truncated: number }>> {
   const { supabase, error } = await requireAdmin()
   if (error) return { ok: false, error }
 
@@ -106,7 +106,7 @@ export async function importNominees(_prev: any, formData: FormData): Promise<Ac
   }
 }
 
-export async function createNominee(_prev: any, formData: FormData): Promise<ActionResult<{ id: string }>> {
+export async function createNominee(formData: FormData): Promise<ActionResult<{ id: string }>> {
   const { supabase, error } = await requireAdmin()
   if (error) return { ok: false, error }
 
@@ -148,7 +148,7 @@ export async function createNominee(_prev: any, formData: FormData): Promise<Act
   return { ok: true, data: { id: inserted!.id } }
 }
 
-export async function updateNominee(_prev: any, formData: FormData): Promise<ActionResult<{ id: string }>> {
+export async function updateNominee(formData: FormData): Promise<ActionResult<{ id: string }>> {
   const { supabase, error } = await requireAdmin()
   if (error) return { ok: false, error }
 
@@ -188,7 +188,7 @@ export async function updateNominee(_prev: any, formData: FormData): Promise<Act
   return { ok: true, data: { id } }
 }
 
-export async function deleteNominee(_prev: any, formData: FormData): Promise<ActionResult> {
+export async function deleteNominee(formData: FormData): Promise<ActionResult> {
   const { supabase, error } = await requireAdmin()
   if (error) return { ok: false, error }
 
@@ -213,7 +213,7 @@ export async function deleteNominee(_prev: any, formData: FormData): Promise<Act
   return { ok: true }
 }
 
-export async function enrichNomineeWithOmdb(_prev: any, formData: FormData): Promise<ActionResult> {
+export async function enrichNomineeWithOmdb(formData: FormData): Promise<ActionResult> {
   const { supabase, error } = await requireAdmin()
   if (error) return { ok: false, error }
 
