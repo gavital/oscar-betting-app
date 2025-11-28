@@ -8,8 +8,8 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import { Save } from 'lucide-react'
-import clsx from 'clsx'
 import { Switch } from '@/components/ui/switch'
+import { useRouter } from 'next/navigation'
 
 const errorMessages: Record<string, string> = {
   AUTH_NOT_AUTHENTICATED: 'Faça login para continuar.',
@@ -44,9 +44,14 @@ function SubmitButton() {
   )
 }
 
-export function EditCategoryForm({ category }: { category: { id: string; name: string; max_nominees: number; is_active: boolean } }) {
+export function EditCategoryForm({
+  category,
+}: {
+  category: { id: string; name: string; max_nominees: number; is_active: boolean }
+}) {
   const [state, formAction] = useActionState(editCategory, null)
-  const [active, setActive] = useState<boolean>(category.is_active)
+  // ✅ fallback defensivo para evitar crash se a prop vier faltando
+  const [active, setActive] = useState<boolean>(category?.is_active ?? false)
   const router = useRouter()
 
   useEffect(() => {
@@ -70,7 +75,15 @@ export function EditCategoryForm({ category }: { category: { id: string; name: s
       </div>
       <div>
         <Label htmlFor="max_nominees">Número Máximo de Indicados</Label>
-        <Input id="max_nominees" name="max_nominees" type="number" min={1} max={20} defaultValue={category.max_nominees} required />
+        <Input
+          id="max_nominees"
+          name="max_nominees"
+          type="number"
+          min={1}
+          max={20}
+          defaultValue={category.max_nominees}
+          required
+        />
       </div>
       <div className="flex items-center gap-2">
         <Switch checked={active} onCheckedChange={(v) => setActive(v)} />
@@ -86,3 +99,4 @@ export function EditCategoryForm({ category }: { category: { id: string; name: s
     </form>
   )
 }
+

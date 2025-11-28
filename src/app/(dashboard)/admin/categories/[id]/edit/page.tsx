@@ -4,17 +4,16 @@ import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { EditCategoryForm } from './EditCategoryForm'
+import { notFound } from 'next/navigation' // ✅ importar notFound
 
-// Note o tipo de params como Promise
 export default async function EditCategoryPage({
   params,
 }: {
-  params: Promise<{ id: string }>
+  params: { id: string } // ✅ params NÃO é Promise
 }) {
-  const { id } = await params // ✅ Desembrulha a Promise
+  const { id } = params // ✅ não precisa await
 
   const supabase = await createServerSupabaseClient()
-
   const { data: category, error } = await supabase
     .from('categories')
     .select('*')
@@ -27,9 +26,9 @@ export default async function EditCategoryPage({
 
   return (
     <div className="space-y-6">
-      <Link 
-      href="/admin/categories"
-      className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900"
+      <Link
+        href="/admin/categories"
+        className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900"
       >
         <ArrowLeft className="mr-2 h-4 w-4" />
         Voltar para Categorias
@@ -40,12 +39,8 @@ export default async function EditCategoryPage({
           <CardTitle className="text-2xl">Editar Categoria</CardTitle>
         </CardHeader>
         <CardContent>
-          <EditCategoryForm          
-            id={category.id}
-            initialName={category.name}
-            initialMaxNominees={category.max_nominees}
-            initialIsActive={category.is_active}
-            />
+          {/* ✅ passar a prop category inteira, como o componente espera */}
+          <EditCategoryForm category={category} />
         </CardContent>
       </Card>
     </div>
