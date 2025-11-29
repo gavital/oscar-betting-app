@@ -1,14 +1,12 @@
 'use client'
 
-import { createContext, useContext } from 'react'
+import { createContext, useContext, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
-const SupabaseContext = createContext<ReturnType<typeof createClient> | undefined>(
-  undefined
-)
+const SupabaseContext = createContext<ReturnType<typeof createClient> | undefined>(undefined)
 
 export function SupabaseProvider({ children }: { children: React.ReactNode }) {
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
 
   return (
     <SupabaseContext.Provider value={supabase}>
