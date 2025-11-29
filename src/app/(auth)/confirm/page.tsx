@@ -4,12 +4,12 @@ import { useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
-import { createClient } from '@/lib/supabase/client'
+import { useSupabase } from '@/providers/SupabaseProvider'
 
 export default function ConfirmPage() {
   const searchParams = useSearchParams()
   const email = searchParams.get('email') || ''
-  const supabase = createClient()
+  const supabase = useSupabase()
 
   const [loading, setLoading] = useState(false)
   const [cooldown, setCooldown] = useState(false)

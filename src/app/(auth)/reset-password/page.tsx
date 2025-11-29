@@ -3,14 +3,14 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+import { useSupabase } from '@/providers/SupabaseProvider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 
 export default function ResetPasswordPage() {
-  const supabase = getSupabaseBrowserClient();
+  const supabase = useSupabase();
   const router = useRouter();
 
   const [password, setPassword] = useState('');

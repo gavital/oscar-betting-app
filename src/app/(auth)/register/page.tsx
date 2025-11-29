@@ -6,12 +6,12 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
-import { createClient } from '@/lib/supabase/client'
+import { useSupabase } from '@/providers/SupabaseProvider'
 import Link from 'next/link'
 
 export default function RegisterPage() {
   const router = useRouter()
-  const supabase = createClient()
+  const supabase = useSupabase()
 
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({

@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { UserCircle } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
+import { useSupabase } from '@/providers/SupabaseProvider'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
@@ -21,7 +21,7 @@ interface Profile {
 
 export function Header({ user }: HeaderProps) {
   const router = useRouter()
-  const supabase = createClient()
+  const supabase = useSupabase()
   const [profile, setProfile] = useState<Profile | null>(null)
 
   useEffect(() => {
