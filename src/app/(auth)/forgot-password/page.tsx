@@ -1,41 +1,43 @@
-'use client'
+// src/app/(auth)/forgot-password/page.tsx
+'use client';
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { toast } from 'sonner'
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { toast } from 'sonner';
 
 export default function ForgotPasswordPage() {
-  const supabase = createClient()
-  const router = useRouter()
-  const [email, setEmail] = useState('')
-  const [loading, setLoading] = useState(false)
+  const router = useRouter();
+  const [email, setEmail] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
+    e.preventDefault();
+    setLoading(true);
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        // Envia o usuário para o callback do app com destino final em /reset-password
-        redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/callback?next=/reset-password`,
-      })
-      if (error) throw error
+      const res = await fetch('/api/auth/forgot', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.ok) throw new Error(json.error || 'Falha ao enviar link');
 
       toast.success('Verifique seu e-mail', {
         description: 'Enviamos um link para redefinir sua senha.',
-      })
-      router.push('/login')
+      });
+      router.push('/login');
     } catch (err: any) {
       toast.error('Erro ao solicitar recuperação', {
         description: err?.message ?? 'Tente novamente mais tarde.',
-      })
+      });
+      console.error('forgot-password error:', err);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   return (
     <div>
@@ -58,11 +60,10 @@ export default function ForgotPasswordPage() {
             placeholder="seu@email.com"
           />
         </div>
-
         <Button type="submit" className="w-full" disabled={loading}>
           {loading ? 'Enviando...' : 'Enviar link de redefinição'}
         </Button>
       </form>
     </div>
-  )
+  );
 }
