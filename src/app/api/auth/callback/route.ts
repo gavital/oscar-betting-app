@@ -8,7 +8,7 @@ export async function GET(request: Request) {
   const next = url.searchParams.get('next') || '/';
 
   if (code) {
-    const supabase = getSupabaseServerClient();
+    const supabase = await getSupabaseServerClient();
     await supabase.auth.exchangeCodeForSession(code);
   }
 
