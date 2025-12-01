@@ -24,40 +24,38 @@ Planejadas (conforme requisitos):
 
 ## 🏗️ Arquitetura
 
-- Next.js App Router em `src/app`
+- Next.js App Router (`src/app`)
   - Autenticação:
     - `src/app/(auth)/login/page.tsx`
     - `src/app/(auth)/register/page.tsx`
     - `src/app/(auth)/confirm/page.tsx`
-  - API Routes:
-    - `src/app/api/auth/callback/route.ts` (exchange de código de e-mail magic link)
-    - `src/app/api/auth/signout/route.ts`
+    - `src/app/(auth)/forgot-password/page.tsx`
+    - `src/app/(auth)/reset-password/page.tsx`
   - Admin:
     - `src/app/(dashboard)/admin/layout.tsx` (verifica role admin)
-    - `src/app/(dashboard)/admin/categories/page.tsx` (listar)
-    - `src/app/(dashboard)/admin/categories/new/page.tsx` (criar)
-    - `src/app/(dashboard)/admin/categories/actions.ts` (Server Action: createCategory)
+    - `src/app/(dashboard)/admin/categories/*` (listagem/criação/edição)
+    - `src/app/(dashboard)/admin/nominees/*` (importação em massa, CRUD)
+  - API Routes:
+    - `src/app/api/auth/callback/route.ts` (troca code por sessão)
+    - `src/app/api/auth/signout/route.ts`
   - Layout global:
     - `src/app/layout.tsx` (providers e Toaster)
-  - Página inicial temporária:
-    - `src/app/page.tsx` (template padrão Next)
-- Middleware:
-  - `src/middleware.ts` protege /bets, /admin, /ranking e controla acesso às rotas de auth
-- Supabase:
+- Supabase (helpers):
   - `src/lib/supabase/client.ts` (browser)
-  - `src/lib/supabase/server.ts` (SSR + cookies)
-  - `src/providers/SupabaseProvider.tsx`, `src/providers/TanstackProvider.tsx`
-- UI e estilo:
-  - `src/app/globals.css` (tokens e tema Tailwind v4)
-  - `components.json` (config do shadcn)
-  - `src/components/layout/Header.tsx` e `Footer.tsx`
+  - `src/lib/supabase/server.ts` (SSR – sem mutação de cookies em RSC/Actions)
+  - `src/lib/supabase/server-mutable.ts` (rotas API com mutação de cookies)
+- Providers:
+  - `src/providers/SupabaseProvider.tsx`
+  - `src/providers/TanstackProvider.tsx`
 - Tipagem do banco:
-  - `src/types/database.ts` com tabelas: profiles, categories, nominees, bets, app_settings
+  - `src/types/database.ts` (profiles, categories, nominees, bets, app_settings)
+- Proxy (substitui middleware no Next 16):
+  - `src/proxy.ts` (não intercepta rotas internas `/_next/**`)
 
-## 🧩 Modelo de Dados (Supabase)
+## 🗃️ Modelo de Dados (Supabase)
 
 Tabelas-chave em `src/types/database.ts`:
-- profiles: id, name, role (user/admin), timestamps
+- profiles: id, name, role (user/admin)
 - categories: id, name, max_nominees, is_active
 - nominees: id, category_id, name, imdb_id, imdb_data, is_winner
 - bets: id, user_id, category_id, nominee_id
@@ -88,8 +86,6 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=<sua-anon-key>
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
 
-- NEXT_PUBLIC_SUPABASE_URL e ANON_KEY são usados tanto no client quanto no server (SSR) via @supabase/ssr
-
 ### Desenvolvimento
 
 ```bash
@@ -97,6 +93,10 @@ npm run dev
 ```
 
 Acesse http://localhost:3000
+Dica: se observar inconsistências com Server Actions em dev, teste sem `--webpack`:
+```bash
+npx next dev
+```
 
 ### Build e Produção
 
@@ -107,16 +107,24 @@ npm start
 
 Deploy recomendado: Vercel (Next.js 16).
 
-## 🔐 Autenticação e Proteção de Rotas
+## 🔐 Autenticação, Autorização e Proteção de Rotas
 
-- Autenticação com Supabase (email/senha)
-- Email de confirmação enviado no registro; página de confirmação em `/confirm?email=<email>`
-- Middleware (`src/middleware.ts`):
-  - Protege `/bets`, `/admin`, `/ranking` para usuários autenticados
-  - Impede acesso a `/login`, `/register`, `/confirm` se já estiver logado
-- API routes:
-  - `GET /api/auth/callback` troca código por sessão (redirect do email)
-  - `POST /api/auth/signout` encerra sessão e redireciona
+- Autenticação via Supabase, com fluxo de verificação por e-mail
+- Proteção baseada em `profiles.role` (user/admin) nas páginas do dashboard
+- Server Actions realizam mutações com `createServerSupabaseClient` (SSR) e revalidam rotas
+
+### Helpers SSR do Supabase
+
+- `src/lib/supabase/server.ts`:
+  - Usa `await cookies()` (Next 16 Dynamic API)
+  - Não muta cookies em Server Components/Server Actions (set/remove no-op) para evitar erro 431
+- `src/lib/supabase/server-mutable.ts`:
+  - Para rotas de API que precisam persistir cookies (ex.: `GET /api/auth/callback`, signout)
+
+### Proxy no Next 16
+
+- `src/proxy.ts`: um único `matcher` exclui rotas internas `/_next/**` e assets estáticos
+- Não colocar lógica de autenticação no proxy; autorização é feita nas páginas/actions
 
 ## 👩‍💻 Funcionalidades por Perfil
 
@@ -143,7 +151,8 @@ Admin:
    - Pendente: editar, ativar/desativar (toggleCategoryActive), validação adicional
 
 4. Gestão de Indicados (Admin)
-   - Pendente: CRUD, importação em massa, integração IMDB
+   - Implementado: CRUD, importação em massa
+   - Pendente: integração IMDB
 
 5. Registro de Apostas
    - Pendente: UI por categoria, seleção de indicado, confirmação e progresso
@@ -172,31 +181,21 @@ Admin:
 ## 🛠️ Tecnologias
 
 - Next.js 16, React 19
-- Supabase (auth, PostgREST / @supabase/ssr)
+- Supabase (@supabase/ssr)
 - Tailwind CSS v4
-- TanStack React Query
 - shadcn UI
-- lucide-react (ícones)
-- zod, react-hook-form (validação e forms)
+- TanStack React Query
+- zod, react-hook-form
+- lucide-react, sonner
 
 ## 📚 Padrões e Convenções
 
 - Server Actions para operações no Admin (ex.: `createCategory`)
-- SSR + Cookies para Supabase (helpers em `src/lib/supabase/server.ts`)
+- Cookies para Supabase (helpers em `src/lib/supabase/server.ts`)
 - Providers no layout (`SupabaseProvider`, `TanstackProvider`)
 - Tipos fortes do banco gerados em `src/types/database.ts`
 - Rotas App Router em `src/app`, com agrupadores por segmento `(auth)`, `(dashboard)`
 
-## 🧪 Testes (sugestão)
-
-- Unitários:
-  - Validação de formulários (registro/login)
-  - Funções utilitárias (parse/normalização em actions)
-- Integração:
-  - Fluxo de registro + confirmação
-  - Server Actions do Admin (createCategory)
-- E2E:
-  - Cypress/Playwright para navegação entre rotas protegidas, login e fluxo básico
 
 ## 🔒 Segurança e Boas Práticas
 
@@ -210,10 +209,10 @@ Admin:
 
 ## 📦 Scripts
 
-- `npm run dev`: desenvolvimento
-- `npm run build`: build para produção
-- `npm start`: servidor de produção
-- `npm run lint`: linting
+- `npm run dev` — desenvolvimento (Next 16, Webpack habilitado)
+- `npm run build` — build de produção
+- `npm start` — servidor de produção
+- `npm run lint` — linting
 
 ## 🗺️ Roadmap
 
@@ -229,8 +228,12 @@ Admin:
 
 ## 🤝 Contribuição
 
-Contribuições são bem-vindas! Abra issues e pull requests com descrições claras. Siga o estilo do projeto e mantenha a segurança e qualidade do código.
+Contribuições são bem-vindas! Abra issues e PRs com descrições claras e foque em segurança, performance e qualidade.
 
 ## 📄 Licença
 
 Nenhuma licença especificada no momento. Recomenda-se adicionar um arquivo LICENSE para clarificar o uso.
+
+## 📄 Licença
+
+Sem licença definida no momento. Recomenda-se adicionar um arquivo LICENSE.
