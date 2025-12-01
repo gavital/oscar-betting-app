@@ -13,7 +13,8 @@ import type { Database } from '@/types/database'
  *   podem ter seus próprios helpers que permitem set/remove.
  */
 export async function createServerSupabaseClient() {
-  const cookieStore = cookies() // não precisa await
+  // ✅ Next.js 16: cookies() é uma Dynamic API e retorna uma Promise
+  const cookieStore = await cookies()
 
   return createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

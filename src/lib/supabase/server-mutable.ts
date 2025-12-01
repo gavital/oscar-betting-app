@@ -3,8 +3,12 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import type { Database } from '@/types/database'
 
+/**
+ * Helper para rotas de API que precisam persistir/limpar cookies de sessão.
+ * Use APENAS em rotas como /api/auth/callback e /api/auth/signout.
+ */
 export async function createServerSupabaseClientMutable() {
-  const cookieStore = cookies()
+  const cookieStore = await cookies()
 
   return createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
