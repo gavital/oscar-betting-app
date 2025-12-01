@@ -10,21 +10,20 @@ import { NextResponse } from 'next/server';
  * Importante: NÃO interceptar rotas internas do Next (/_next/**),
  * pois isso quebra Server Actions e outras funcionalidades do framework.
  */
-export async function proxy(req: NextRequest) {
+export async function proxy(_req: NextRequest) {
   return NextResponse.next();
 }
 
 /**
  * Matcher:
- * - Aplica proxy a todas as rotas, exceto:
- *   - Rotas internas do Next: /_next/**
- *   - favicon
- *   - assets estáticos comuns (svg, png, jpg, jpeg, gif, webp, css, js, map)
+ * - Única entrada que exclui todas as rotas internas do Next e assets estáticos.
+ * - Evita interceptar:
+ *   - /_next/static, /_next/image, /_next/data, /_next/server, /_next/webpack-hmr
+ *   - favicon.ico
+ *   - arquivos estáticos comuns (svg, png, jpg, jpeg, gif, webp, css, js, map)
  */
 export const config = {
   matcher: [
-    '/((?!_next/).*)',
-    '/((?!favicon.ico).*)',
-    '/((?!.*\\.(?:svg|png|jpg|jpeg|gif|webp|css|js|map)$).*)',
+    '/((?!_next/static|_next/image|_next/data|_next/server|_next/webpack-hmr|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|css|js|map)$).*)',
   ],
 };
