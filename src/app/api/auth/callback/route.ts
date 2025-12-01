@@ -1,6 +1,6 @@
 // src/app/api/auth/callback/route.ts
 import { NextResponse } from 'next/server';
-import { getSupabaseServerClient } from '@/lib/supabase/ssr';
+import { createServerSupabaseClient } from '@/lib/supabase/server';
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -8,7 +8,7 @@ export async function GET(request: Request) {
   const next = url.searchParams.get('next') || '/';
 
   if (code) {
-    const supabase = await getSupabaseServerClient();
+    const supabase = await createServerSupabaseClient();
     await supabase.auth.exchangeCodeForSession(code);
   }
 

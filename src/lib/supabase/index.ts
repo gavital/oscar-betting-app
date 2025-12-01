@@ -1,2 +1,3 @@
+// src/lib/supabase/index.ts
 export { createClient } from './client'; // browser
-export { getSupabaseServerClient } from './ssr'; // server (SSR/Edge)
+export { createServerSupabaseClient } from './server'; // server (SSR/Edge)

@@ -1,7 +1,8 @@
+// src/app/api/auth/forgot/route.ts
 import { NextResponse } from 'next/server';
-import { getSupabaseServerClient } from '@/lib/supabase/ssr'
+import { createServerSupabaseClient } from '@/lib/supabase/server'
 
-export const runtime = 'edge'; // opcional (ver Passo 3)
+export const runtime = 'edge'; // opcional
 
 export async function POST(request: Request) {
   try {
@@ -10,7 +11,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: 'Email inválido' }, { status: 400 });
     }
 
-    const supabase = await getSupabaseServerClient();
+    const supabase = await createServerSupabaseClient();
     const redirectTo = `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/callback?next=/reset-password`;
 
     const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
