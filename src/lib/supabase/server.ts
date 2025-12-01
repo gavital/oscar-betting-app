@@ -3,14 +3,8 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import type { Database } from '@/types/database'
 
-/**
- * Server-side Supabase client (SSR/Edge) unificado.
- * - Nome padronizado: createServerSupabaseClient (async)
- * - Usa cookies do Next App Router.
- * - set/remove são protegidos com try/catch para evitar erro em RSC.
- */
 export async function createServerSupabaseClient() {
-  const cookieStore = await cookies() // compatível com Next 16
+  const cookieStore = await cookies()
 
   return createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -29,7 +23,13 @@ export async function createServerSupabaseClient() {
         },
         remove(name: string, options: CookieOptions) {
           try {
-            cookieStore.set({ name, value: '', ...options })
+            // Remoção consistente: expira imediatamente
+            cookieStore.set({
+              name,
+              value: '',
+              ...options,
+              maxAge: 0,
+            })
           } catch {
             // Em Server Components, mutação de cookies não é permitida; ignorar
           }
