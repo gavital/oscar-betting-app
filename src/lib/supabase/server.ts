@@ -1,10 +1,19 @@
 // src/lib/supabase/server.ts
-import { createServerClient, type CookieOptions } from '@supabase/ssr'
+import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import type { Database } from '@/types/database'
 
+/**
+ * Server-side Supabase client (SSR/Edge) unificado.
+ *
+ * Importante:
+ * - Em Server Components e Server Actions, NÃO devemos mutar cookies.
+ *   Isso evita que o navegador acumule cookies (431 Request Header Fields Too Large).
+ * - As rotas de API que realmente precisam ajustar cookies (ex.: callback/signout)
+ *   podem ter seus próprios helpers que permitem set/remove.
+ */
 export async function createServerSupabaseClient() {
-  const cookieStore = await cookies()
+  const cookieStore = cookies() // não precisa await
 
   return createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -14,25 +23,12 @@ export async function createServerSupabaseClient() {
         get(name: string) {
           return cookieStore.get(name)?.value
         },
-        set(name: string, value: string, options: CookieOptions) {
-          try {
-            cookieStore.set({ name, value, ...options })
-          } catch {
-            // Em Server Components, mutação de cookies não é permitida; ignorar
-          }
+        // No-ops: não mutar cookies em RSC/Actions
+        set(_name: string, _value: string, _options: any) {
+          // intentionally no-op to avoid cookie bloat in RSC/Server Actions
         },
-        remove(name: string, options: CookieOptions) {
-          try {
-            // Remoção consistente: expira imediatamente
-            cookieStore.set({
-              name,
-              value: '',
-              ...options,
-              maxAge: 0,
-            })
-          } catch {
-            // Em Server Components, mutação de cookies não é permitida; ignorar
-          }
+        remove(_name: string, _options: any) {
+          // intentionally no-op to avoid cookie bloat in RSC/Server Actions
         },
       },
     }

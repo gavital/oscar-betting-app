@@ -1,6 +1,6 @@
 // src/app/api/auth/callback/route.ts
 import { NextResponse } from 'next/server';
-import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { createServerSupabaseClientMutable } from '@/lib/supabase/server-mutable';
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -8,7 +8,7 @@ export async function GET(request: Request) {
   const next = url.searchParams.get('next') || '/';
 
   if (code) {
-    const supabase = await createServerSupabaseClient();
+    const supabase = await createServerSupabaseClientMutable();
     await supabase.auth.exchangeCodeForSession(code);
   }
 
