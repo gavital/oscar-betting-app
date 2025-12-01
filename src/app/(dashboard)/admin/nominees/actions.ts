@@ -330,3 +330,57 @@ export async function enrichNomineeWithOmdb(formData: FormData): Promise<ActionR
   revalidatePath(`/admin/nominees/${nominee.category_id}`)
   return { ok: true }
 }
+
+export async function enrichNomineeWithTMDB(formData: FormData) {
+  const nomineeId = String(formData.get('nominee_id') ?? '').trim()
+  const categoryId = String(formData.get('category_id') ?? '').trim()
+  const queryName = String(formData.get('name') ?? '').trim()
+  const type = String(formData.get('type') ?? 'movie') // 'movie' | 'person'
+
+  if (!nomineeId || !categoryId || !queryName) {
+    return { ok: false, error: 'INVALID_INPUT' as const }
+  }
+
+  const supabase = await createServerSupabaseClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { ok: false, error: 'AUTH_NOT_AUTHENTICATED' as const }
+
+  // Autorização adicional (role admin) se necessário
+  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+  if (profile?.role !== 'admin') return { ok: false, error: 'AUTH_FORBIDDEN' as const }
+
+  const apiKey = process.env.TMDB_API_KEY
+  if (!apiKey) return { ok: false, error: 'TMDB_API_KEY_MISSING' as const }
+
+  const endpoint =
+    type === 'person'
+      ? `https://api.themoviedb.org/3/search/person?query=${encodeURIComponent(queryName)}&language=pt-BR&include_adult=false&api_key=${apiKey}`
+      : `https://api.themoviedb.org/3/search/movie?query=${encodeURIComponent(queryName)}&language=pt-BR&include_adult=false&api_key=${apiKey}`
+
+  const res = await fetch(endpoint, { cache: 'no-store' })
+  if (!res.ok) {
+    return { ok: false, error: 'TMDB_FETCH_FAILED' as const }
+  }
+
+  const json = await res.json() as any
+  const first = Array.isArray(json?.results) ? json.results[0] : null
+  if (!first) {
+    return { ok: false, error: 'TMDB_NO_RESULTS' as const }
+  }
+
+  const tmdbId = String(first.id)
+  const tmdbData = first // reduzido; considere mapear campos relevantes
+
+  const { error: upErr } = await supabase
+    .from('nominees')
+    .update({ tmdb_id: tmdbId, tmdb_data: tmdbData })
+    .eq('id', nomineeId)
+    .eq('category_id', categoryId)
+
+  if (upErr) {
+    return { ok: false, error: 'DB_UPDATE_ERROR', message: upErr.message }
+  }
+
+  revalidatePath(`/admin/nominees/${categoryId}`)
+  return { ok: true }
+}
