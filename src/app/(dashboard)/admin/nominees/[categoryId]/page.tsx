@@ -1,5 +1,5 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
-import { importNominees, createNominee, updateNominee, deleteNominee, enrichNomineeWithOmdb } from '../actions'
+import { importNominees, createNominee, updateNominee, deleteNominee, enrichNomineeWithTMDB } from '../actions'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -9,9 +9,10 @@ import { ConfirmDeleteNomineeForm } from '../_components/ConfirmDeleteNomineeFor
 export default async function ManageNomineesPage({
   params,
 }: {
-  params: Promise<{ categoryId: string }>
+  params: { categoryId: string }
 }) {
-  const { categoryId } = await params
+  const { categoryId } = params
+
   const supabase = await createServerSupabaseClient()
 
   const { data: category, error: catErr } = await supabase
@@ -22,9 +23,10 @@ export default async function ManageNomineesPage({
 
   const { data: nominees, error: nomErr } = await supabase
     .from('nominees')
-    .select('id, name, imdb_id, imdb_data, is_winner')
+    .select('id, name, tmdb_id, tmdb_data, imdb_id, imdb_data, is_winner')
     .eq('category_id', categoryId)
     .order('name')
+
 
   if (catErr || !category) {
     return <p className="text-red-600 text-sm">Erro ao carregar categoria: {catErr?.message ?? 'Não encontrada'}</p>
@@ -85,10 +87,10 @@ export default async function ManageNomineesPage({
             <li key={n.id} className="flex items-center justify-between py-3">
               <div className="flex items-center gap-3">
                 <span className="font-medium">{n.name}</span>
-                {n.imdb_data ? (
-                  <span className="text-xs px-2 py-1 rounded bg-green-100 text-green-700">IMDB OK</span>
+                {n.tmdb_data ? (
+                  <span className="text-xs px-2 py-1 rounded bg-green-100 text-green-700">TMDB OK</span>
                 ) : (
-                  <span className="text-xs px-2 py-1 rounded bg-gray-100 text-gray-600">IMDB Pendente</span>
+                  <span className="text-xs px-2 py-1 rounded bg-gray-100 text-gray-600">TMDB Pendente</span>
                 )}
                 {n.is_winner && (
                   <span className="text-xs px-2 py-1 rounded bg-purple-100 text-purple-700">Vencedor</span>
@@ -96,9 +98,12 @@ export default async function ManageNomineesPage({
               </div>
 
               <div className="flex items-center gap-2">
-                <form action={enrichNomineeWithOmdb}>
-                  <input type="hidden" name="id" value={n.id} />
-                  <Button variant="outline" className="text-sm">Buscar IMDB</Button>
+                <form action={enrichNomineeWithTMDB} className="flex items-center gap-2">
+                  <input type="hidden" name="nominee_id" value={n.id} />
+                  <input type="hidden" name="category_id" value={categoryId} />
+                  <input type="hidden" name="type" value="movie" />
+                  <Input name="name" placeholder="Título do filme" defaultValue={n.name} className="text-sm w-56" />
+                  <Button variant="outline" className="text-sm">Buscar TMDB</Button>
                 </form>
 
                 <form action={updateNominee} className="flex items-center gap-2">
