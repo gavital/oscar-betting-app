@@ -9,10 +9,9 @@ import { ConfirmDeleteNomineeForm } from '../_components/ConfirmDeleteNomineeFor
 export default async function ManageNomineesPage({
   params,
 }: {
-  params: { categoryId: string }
+  params: Promise<{ categoryId: string }>
 }) {
-  const { categoryId } = params
-
+  const { categoryId } = await params
   const supabase = await createServerSupabaseClient()
 
   const { data: category, error: catErr } = await supabase
