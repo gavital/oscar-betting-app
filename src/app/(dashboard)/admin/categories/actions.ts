@@ -36,12 +36,14 @@ export type ActionResult<T = void> =
  * createCategory - server action com logging de diagnóstico para investigar
  * por que campos enviados como "1_name"/"1_max_nominees" não estão sendo lidos.
  */
-export async function createCategory(_prevState: any, formData: FormData): Promise<ActionResult<{ id: string }>> {
-  const adminCheck = await requireAdmin();
+export async function createCategory(
+  _prevState: any,
+  formData: FormData
+): Promise<ActionResult<{ id: string }>> {
+  const adminCheck = await requireAdmin()
   if ('error' in adminCheck) {
-    // mapeia para tipos locais
-    const e = adminCheck.error;
-    return { ok: false, error: { code: e.code, message: e.message, field: e.field } as any };
+    const e = adminCheck.error
+    return { ok: false, error: { code: e.code, message: e.message, field: e.field } as any }
   }
   const { supabase } = adminCheck;
 
@@ -57,8 +59,8 @@ export async function createCategory(_prevState: any, formData: FormData): Promi
         code: 'VALIDATION_NAME_MIN_LENGTH',
         message: 'Nome deve ter pelo menos 3 caracteres',
         field: 'name',
-        details: { length: name.length }
-      }
+        details: { length: name.length },
+      },
     }
   }
 
@@ -70,50 +72,12 @@ export async function createCategory(_prevState: any, formData: FormData): Promi
         code: 'VALIDATION_MAX_RANGE',
         message: 'Número de indicados deve ser entre 1 e 20',
         field: 'max_nominees',
-        details: { value: max_nominees }
-      }
+        details: { value: max_nominees },
+      },
     }
   }
 
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) {
-    return {
-      ok: false,
-      error: {
-        code: 'AUTH_NOT_AUTHENTICATED',
-        message: 'Usuário não autenticado',
-        field: 'auth'
-      }
-    }
-  }
-
-  const { data: profile, error: profileError } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single()
-
-  if (profileError) {
-    return {
-      ok: false,
-      error: {
-        code: 'DB_SELECT_ERROR',
-        message: profileError.message || 'Erro ao verificar perfil',
-        field: 'role'
-      }
-    }
-  }
-  if (profile?.role !== 'admin') {
-    return {
-      ok: false,
-      error: {
-        code: 'AUTH_FORBIDDEN',
-        message: 'Acesso negado',
-        field: 'role'
-      }
-    }
-  }
-
+  
   const { data: existing, error: selectError } = await supabase
     .from('categories')
     .select('id')
@@ -166,38 +130,9 @@ export async function toggleCategoryActive(
   id: string,
   nextState: boolean
 ): Promise<ActionResult> {
-  const supabase = await createServerSupabaseClient()
-
   const adminCheck = await requireAdmin();
   if ('error' in adminCheck) return { ok: false, error: adminCheck.error as any }
   const { supabase } = adminCheck;
-
-  const { data: profile, error: profileError } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single()
-
-  if (profileError) {
-    return {
-      ok: false,
-      error: {
-        code: 'DB_SELECT_ERROR',
-        message: profileError.message || 'Erro ao verificar perfil',
-        field: 'role'
-      }
-    }
-  }
-  if (profile?.role !== 'admin') {
-    return {
-      ok: false,
-      error: {
-        code: 'AUTH_FORBIDDEN',
-        message: 'Acesso negado',
-        field: 'role'
-      }
-    }
-  }
 
   const { error: updateError } = await supabase
     .from('categories')
@@ -223,9 +158,6 @@ export async function toggleCategoryActiveAction(
   formData: FormData
 ): Promise<ActionResult> {
   const id = String(formData.get('id') || '')
-  const adminCheck = await requireAdmin();
-  if ('error' in adminCheck) return { ok: false, error: adminCheck.error as any }
-  const { supabase } = adminCheck;
 
   // Checkbox nativo: quando marcado -> "on"; quando desmarcado -> null (não existe key)
   const raw = formData.get('nextState')
@@ -247,10 +179,9 @@ export async function toggleCategoryActiveAction(
     }
   }
 
-  // Reutiliza a lógica da função existente
+  // Autorização e update tratados em toggleCategoryActive
   return await toggleCategoryActive(id, nextState)
 }
-
 
 type EditCategoryInput = {
   id: string
@@ -259,13 +190,11 @@ type EditCategoryInput = {
   is_active?: boolean
 }
 
-// ✅ Ajuste: dois parâmetros (prevState, formData) para compatibilidade com useActionState
+// Editar categoria
 export async function editCategory(
   _prevState: any,
   formData: FormData
 ): Promise<ActionResult<{ id: string }>> {
-  const supabase = await createServerSupabaseClient()
-
   const adminCheck = await requireAdmin();
   if ('error' in adminCheck) return { ok: false, error: adminCheck.error as any }
   const { supabase } = adminCheck;
@@ -327,46 +256,6 @@ export async function editCategory(
         message: 'Número de indicados deve ser entre 1 e 20.',
         field: 'max_nominees',
         details: { value: max_nominees },
-      },
-    }
-  }
-
-  // Autenticação / autorização
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) {
-    return {
-      ok: false,
-      error: {
-        code: 'AUTH_NOT_AUTHENTICATED',
-        message: 'Faça login para continuar.',
-        field: 'auth',
-      },
-    }
-  }
-
-  const { data: profile, error: profileError } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single()
-
-  if (profileError) {
-    return {
-      ok: false,
-      error: {
-        code: 'DB_SELECT_ERROR',
-        message: profileError.message || 'Erro ao verificar perfil.',
-        field: 'role',
-      },
-    }
-  }
-  if (profile?.role !== 'admin') {
-    return {
-      ok: false,
-      error: {
-        code: 'AUTH_FORBIDDEN',
-        message: 'Você não tem permissão para editar categorias.',
-        field: 'role',
       },
     }
   }
