@@ -16,10 +16,6 @@ function log(scope: string, message: string, data?: any) {
   }
 }
 
-export function normalizeNomineeName(name: string): string {
-  return name.trim().replace(/\s+/g, ' ');
-}
-
 function correlationId() {
   return Math.random().toString(36).slice(2, 10);
 }
@@ -326,11 +322,16 @@ export async function enrichNomineeWithTMDB(formData: FormData) {
   const apiKey = process.env.TMDB_API_KEY
   if (!apiKey) return { ok: false, error: 'TMDB_API_KEY_MISSING' as const }
 
-  const results = type === 'person'
-  ? await searchPersonByName(queryName)
-  : await searchMovieByName(queryName)
+  let results: any[] = []
+  try {
+    results = type === 'person'
+      ? await searchPersonByName(queryName)
+      : await searchMovieByName(queryName)
+  } catch (_err) {
+    return { ok: false, error: 'TMDB_FETCH_FAILED' as const }
+  }
 
-const first = Array.isArray(results) ? results[0] : null
+  const first = Array.isArray(results) ? results[0] : null
   if (!first) {
     return { ok: false, error: 'TMDB_NO_RESULTS' as const }
   }
