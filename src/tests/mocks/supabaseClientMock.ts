@@ -18,34 +18,46 @@ export function createSupabaseStub(initial: Partial<TableStore> = {}) {
     from(table: string) {
       return {
         // SELECT
-        select(_cols?: string, _opts?: any) {
+        select(_cols?: string, opts?: any) {
           const rows = store[table] ?? [];
-          return {
+          // Suporte a contagem: select('*', { count: 'exact', head: true })
+          if (opts?.count && opts?.head) {
+            let current = rows.slice();
+            const countBuilder = {
+              eq(field: string, value: any) {
+                current = current.filter(r => r[field] === value);
+                return Promise.resolve({ count: current.length, error: null });
+              }
+            };
+            return countBuilder as any;
+          }
+
+          // Builder encadeável
+          let current = rows.slice();
+
+          const builder: any = {
             eq(field: string, value: any) {
-              const filtered = rows.filter(r => r[field] === value);
-              return {
-                maybeSingle: async () => ({ data: filtered[0] ?? null, error: null }),
-                single: async () => {
-                  if (!filtered[0]) return { data: null, error: { message: 'Row not found' } };
-                  return { data: filtered[0], error: null };
-                }
-              };
+              current = current.filter(r => r[field] === value);
+              return builder;
             },
             ilike(field: string, value: string) {
               const needle = value.toLowerCase();
-              const filtered = rows.filter(r => String(r[field] ?? '').toLowerCase() === needle);
-              return {
-                maybeSingle: async () => ({ data: filtered[0] ?? null, error: null })
-              };
+              current = current.filter(r => String(r[field] ?? '').toLowerCase() === needle);
+              return builder;
             },
             neq(field: string, value: any) {
-              const filtered = rows.filter(r => r[field] !== value);
-              return {
-                maybeSingle: async () => ({ data: filtered[0] ?? null, error: null })
-              };
-            }
+              current = current.filter(r => r[field] !== value);
+              return builder;
+            },
+            maybeSingle: async () => ({ data: current[0] ?? null, error: null }),
+            single: async () =>
+              current[0]
+                ? { data: current[0], error: null }
+                : { data: null, error: { message: 'Row not found' } },
           };
-        },
+
+          return builder;
+        },,
 
         // INSERT
         insert(payload: Row | Row[]) {

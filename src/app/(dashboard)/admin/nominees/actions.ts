@@ -14,6 +14,10 @@ function log(scope: string, message: string, data?: any) {
   }
 }
 
+export function normalizeNomineeName(name: string): string {
+  return name.trim().replace(/\s+/g, ' ');
+}
+
 function correlationId() {
   return Math.random().toString(36).slice(2, 10);
 }
