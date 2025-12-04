@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label'
 import { ConfirmDeleteNomineeForm } from '../_components/ConfirmDeleteNomineeForm'
 import Image from 'next/image'
 import { getTmdbImageUrl } from '@/lib/tmdb/client'
+import WinnerSetForm from '../_components/WinnerSetForm'
 
 export default async function ManageNomineesPage({
   params,
@@ -157,6 +158,13 @@ export default async function ManageNomineesPage({
                   </form>
 
                   <ConfirmDeleteNomineeForm id={n.id} />
+
+                  {/* Marcar como vencedor (apenas admin) */}
+                  <WinnerSetForm
+                    categoryId={categoryId}
+                    nomineeId={n.id}
+                    disabled={!!n.is_winner}
+                  />
                 </div>
               </li>
             )
