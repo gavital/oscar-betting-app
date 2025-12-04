@@ -1,6 +1,5 @@
 'use server'
 
-import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { requireAdmin } from '@/lib/auth/requireAdmin'
 
@@ -27,10 +26,6 @@ export type ActionError = {
 export type ActionResult<T = void> =
   | { ok: true; data?: T }
   | { ok: false; error: ActionError }
-
-// type EditCategoryResult =
-// | { ok: true; success: true }
-// | { ok: false; error: ActionError }
 
 /**
  * createCategory - server action com logging de diagnóstico para investigar
@@ -81,7 +76,7 @@ export async function createCategory(
   const { data: existing, error: selectError } = await supabase
     .from('categories')
     .select('id')
-    .eq('name', name)
+    .ilike('name', name)
     .maybeSingle()
 
   if (selectError) {
@@ -288,12 +283,12 @@ export async function editCategory(
     }
   }
 
-  // Nome único (se fornecido)
+  // Nome único (se fornecido) - case-insensitive
   if (name !== undefined) {
     const { data: duplicated, error: dupError } = await supabase
       .from('categories')
       .select('id')
-      .eq('name', name)
+      .ilike('name', name)
       .neq('id', id)
       .maybeSingle()
 
