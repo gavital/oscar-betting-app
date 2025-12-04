@@ -126,23 +126,36 @@ export function createSupabaseStub(initial: Partial<TableStore> = {}) {
           };
         },
 
-        // UPDATE
+        // UPDATE (encadeável com thenable)
         update(payload: Partial<Row>) {
-          return {
+          // Acumula filtros para serem aplicados no await final
+          const filters: Array<{ field: string; value: any }> = [];
+
+          const builder: any = {
             eq(field: string, value: any) {
+              filters.push({ field, value });
+              return builder; // permite encadear outro .eq(...)
+            },
+            // Torna o builder "thenable": quando for await'ed, aplica os filtros e executa o update
+            then: async (resolve: (result: any) => any) => {
               const rows = store[table] ?? [];
               let updated = 0;
+
               store[table] = rows.map((r) => {
-                if (r[field] === value) {
+                const match = filters.every((f) => r[f.field] === f.value);
+                if (match) {
                   updated++;
                   return { ...r, ...payload };
                 }
                 return r;
               });
+
               const error = updated === 0 ? { message: 'Row not found' } : null;
-              return Promise.resolve({ error });
+              return resolve({ error });
             },
           };
+
+          return builder;
         },
 
         // DELETE
