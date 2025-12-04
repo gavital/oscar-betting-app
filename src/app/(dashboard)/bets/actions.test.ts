@@ -105,4 +105,26 @@ describe('bets/actions: confirmBet', () => {
     expect(res.ok).toBe(false);
     if (!res.ok) expect(res.error.code).toBe('NOMINEE_NOT_IN_CATEGORY');
   });
+  it('falha quando bets_open está falso (apostas fechadas)', async () => {
+    const supabase: any = createSupabaseStub({
+      categories: [{ id: 'cat_1', name: 'Melhor Filme', max_nominees: 5, is_active: true }],
+      nominees: [{ id: 'n1', category_id: 'cat_1', name: 'Alpha' }],
+      app_settings: [{ key: 'bets_open', value: false }],
+    });
+    const mod = await vi.importActual<any>('@/lib/supabase/server');
+    vi.spyOn(mod, 'createServerSupabaseClient').mockResolvedValue(supabase);
+  
+    vi.spyOn(supabase.auth, 'getUser').mockResolvedValue({ data: { user: { id: 'u1', email: 'x@y.z' } } } as any);
+  
+    const fd = new FormData();
+    fd.set('category_id', 'cat_1');
+    fd.set('nominee_id', 'n1');
+  
+    const res = await confirmBet(fd);
+    expect(res.ok).toBe(false);
+    if (!res.ok) {
+      expect(res.error.code).toBe('AUTH_FORBIDDEN');
+      expect(res.error.message).toMatch(/Apostas encerradas/i);
+    }
+  });
 });
