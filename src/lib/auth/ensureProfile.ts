@@ -71,6 +71,23 @@ export async function ensureProfile() {
       { onConflict: 'id' }
     );
 
+  // Dentro de ensureProfile(), após obter user
+  const debug = process.env.DEBUG_AUTH === '1';
+  if (debug) {
+    console.log('[ensureProfile] user', { id: user?.id, email: user?.email });
+  }
+
+  // Ao selecionar profile:
+  const { data: existing, error: existingErr } = await supabase
+    .from('profiles')
+    .select('id, name, role')
+    .eq('id', user.id)
+    .maybeSingle();
+
+  if (debug) {
+    console.log('[ensureProfile] select profile', { existing, error: existingErr?.message });
+  }
+
   const { data: profile } = await supabase
     .from('profiles')
     .select('id, name, role')
