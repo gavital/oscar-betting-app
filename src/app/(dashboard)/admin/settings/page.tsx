@@ -2,6 +2,7 @@ import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { setBetsOpen } from './actions'
 import { Button } from '@/components/ui/button'
 import SettingsBetsForm from './_components/SettingsBetsForm'
+import SettingsResultsForm from './_components/SettingsResultsForm'
 import { redirect } from 'next/navigation'
 
 export default async function AdminSettingsPage() {
@@ -28,7 +29,17 @@ export default async function AdminSettingsPage() {
     setting?.value === true ||
     setting?.value === 'true' ||
     setting?.value?.toString?.() === 'true' ||
-    setting == null // fallback: aberto quando ausente
+    setting == null // fallback: aberto quando ausente// Leitura results_published
+  const { data: publishedSetting } = await supabase
+    .from('app_settings')
+    .select('key, value')
+    .eq('key', 'results_published')
+    .maybeSingle()
+  const resultsPublished =
+    publishedSetting?.value === true ||
+    publishedSetting?.value === 'true' ||
+    publishedSetting?.value?.toString?.() === 'true' ||
+    false // default: não publicado
 
   return (
     <div className="space-y-6">
@@ -54,6 +65,25 @@ export default async function AdminSettingsPage() {
         </div>
 
         <SettingsBetsForm currentOpen={!!open} />
+      </div>
+
+      <div className="border-t pt-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="text-sm text-gray-700">Publicação dos resultados:</div>
+            {resultsPublished ? (
+              <span className="inline-flex items-center text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded">
+                RESULTADOS PUBLICADOS
+              </span>
+            ) : (
+              <span className="inline-flex items-center text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">
+                RESULTADOS OCULTOS
+              </span>
+            )}
+          </div>
+
+          <SettingsResultsForm currentPublished={!!resultsPublished} />
+        </div>
       </div>
     </div>
   )
