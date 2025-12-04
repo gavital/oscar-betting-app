@@ -9,6 +9,18 @@ export default async function MyBetsPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
+  // Estado global das apostas
+  const { data: setting } = await supabase
+    .from('app_settings')
+    .select('key, value')
+    .eq('key', 'bets_open')
+    .maybeSingle()
+  const betsOpen =
+    setting?.value === true ||
+    setting?.value === 'true' ||
+    setting?.value?.toString?.() === 'true' ||
+    setting == null // fallback aberto
+
   // Categorias ativas
   const { data: categories, error: catErr } = await supabase
     .from('categories')
@@ -38,6 +50,18 @@ export default async function MyBetsPage() {
         <p className="text-sm text-gray-600">
           Progresso: {completed} de {total} categorias ({progressPct}%)
         </p>
+        {/* Status global de apostas */}
+        <div className="mt-2">
+          {betsOpen ? (
+            <span className="inline-flex items-center text-xs bg-green-100 text-green-700 px-2 py-1 rounded">
+              APOSTAS ABERTAS
+            </span>
+          ) : (
+            <span className="inline-flex items-center text-xs bg-red-100 text-red-700 px-2 py-1 rounded">
+              APOSTAS FECHADAS
+            </span>
+          )}
+        </div>
         {/* Você pode substituir por um componente de Progress caso use uma lib de UI */}
         <div className="w-full bg-gray-200 h-2 rounded mt-2">
           <div className="bg-blue-600 h-2 rounded" style={{ width: `${progressPct}%` }} />

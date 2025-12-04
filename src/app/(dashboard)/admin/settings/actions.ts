@@ -39,5 +39,7 @@ export async function setBetsOpen(formData: FormData): Promise<ActionResult<{ op
 
   // Revalida páginas de apostas
   revalidatePath('/bets')
+  revalidatePath('/bets/[categoryId]') // revalida páginas dinâmicas recarregadas
+  revalidatePath('/') // se homepage tiver status global
   return { ok: true, data: { open } }
 }

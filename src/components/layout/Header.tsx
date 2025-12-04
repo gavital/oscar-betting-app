@@ -71,6 +71,9 @@ export function Header({ user }: HeaderProps) {
                     <Link href="/admin/nominees">
                       <Button variant="ghost">Admin: Indicados</Button>
                     </Link>
+                    <Link href="/admin/settings">
+                      <Button variant="ghost">Admin: Controle de Apostas</Button>
+                    </Link>
                   </>
                 )}
 
