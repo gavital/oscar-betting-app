@@ -13,42 +13,47 @@ function parseAdminEmails(): Set<string> {
 
 /**
  * Garante que exista uma linha em public.profiles para o usuário atual.
- * Promove para admin se o e-mail estiver na lista ADMIN_EMAILS (dev/prod controlado por env).
+ * - Se o e-mail estiver em ADMIN_EMAILS, define role = 'admin'
+ * - Caso contrário, mantém/metadado ou 'user'
  */
 export async function ensureProfile() {
   const supabase = await createServerSupabaseClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { supabase, user: null, profile: null };
 
-  const { data: existing, error } = await supabase
+  // 1) Tenta ler o profile existente
+  const { data: existing } = await supabase
     .from('profiles')
     .select('id, name, role')
     .eq('id', user.id)
     .maybeSingle();
 
-  if (error) {
-    // Em dev, se RLS bloquear SELECT, retornará erro. Ainda assim tentamos upsert abaixo.
-    // Você pode logar error.message aqui se precisar.
+  if (existing) {
+    return { supabase, user, profile: existing };
   }
 
-  if (existing) return { supabase, user, profile: existing };
-
+  // 2) Se não existir, cria
   const admins = parseAdminEmails();
   const isAdmin = user.email ? admins.has(user.email.toLowerCase()) : false;
 
   const meta = user.user_metadata ?? {};
   const name = (meta.name as string) ?? user.email?.split('@')[0] ?? 'Usuário';
-  const role: 'user' | 'admin' = isAdmin ? 'admin' : (meta.role as any) ?? 'user';
+  const role: 'user' | 'admin' =
+    isAdmin ? 'admin' : ((meta.role as 'user' | 'admin') ?? 'user');
 
   await supabase
     .from('profiles')
-    .upsert({
-      id: user.id,
-      name,
-      role,
-      updated_at: new Date().toISOString(),
-    }, { onConflict: 'id' });
+    .upsert(
+      {
+        id: user.id,
+        name,
+        role,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'id' }
+    );
 
+  // 3) Lê novamente para devolver o profile
   const { data: profile } = await supabase
     .from('profiles')
     .select('id, name, role')
