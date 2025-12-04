@@ -1,5 +1,6 @@
 // src/app/(dashboard)/admin/nominees/actions.test.ts
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import * as Auth from '@/lib/auth/requireAdmin';
 import { normalizeNomineeName } from './utils';
 import {
   importNominees,
