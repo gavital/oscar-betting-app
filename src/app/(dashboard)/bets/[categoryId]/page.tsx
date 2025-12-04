@@ -1,10 +1,9 @@
 import Image from 'next/image'
 import Link from 'next/link'
-import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { confirmBet } from '../actions'
+import BetConfirmForm from '../_components/BetConfirmForm'
 import { getTmdbImageUrl } from '@/lib/tmdb/client'
 
 export default async function BetCategoryPage({
@@ -15,6 +14,7 @@ export default async function BetCategoryPage({
   const { categoryId } = await params
   const supabase = await createServerSupabaseClient()
 
+  // Usuário autenticado?
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
@@ -26,16 +26,21 @@ export default async function BetCategoryPage({
     .single()
 
   if (catErr || !category) {
-    return <div className="text-sm text-red-600">Categoria não encontrada</div>
+    return <div className="text-sm text-red-600">Categoria não encontrada.</div>
   }
 
-  // Apostas abertas?
-  const { data: settings } = await supabase
+  // Status de apostas (app_settings.bets_open) - fallback: aberto
+  const { data: setting } = await supabase
     .from('app_settings')
     .select('key, value')
     .eq('key', 'bets_open')
     .maybeSingle()
-  const betsOpen = settings?.value === true || settings?.value === 'true' || settings?.value?.toString?.() === 'true'
+
+    const betsOpen =
+      setting?.value === true ||
+      setting?.value === 'true' ||
+      setting?.value?.toString?.() === 'true' ||
+      setting?.value == null // fallback: aberto quando ausente
 
   // Nominees da categoria
   const { data: nominees, error: nomErr } = await supabase
@@ -76,16 +81,26 @@ export default async function BetCategoryPage({
       </div>
 
       <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {(nominees ?? []).map(n => {
-          const posterPath = (n as any)?.tmdb_data?.poster_path ?? (n as any)?.tmdb_data?.profile_path ?? null
+        {(nominees ?? []).map((n) => {
+          const posterPath =
+            (n as any)?.tmdb_data?.poster_path ??
+            (n as any)?.tmdb_data?.profile_path ??
+            null
           const posterUrl = getTmdbImageUrl(posterPath, 'list')
           const isSelected = selectedNomineeId === n.id
 
           return (
             <li key={n.id} className="border rounded p-3 flex flex-col gap-3">
-              {posterUrl ? (
-                <Image src={posterUrl} alt={n.name} width={185} height={278} className="rounded border object-cover" />
-              ) : (
+            {/* Imagem do TMDB */}
+            {posterUrl ? (
+              <Image
+                src={posterUrl}
+                alt={n.name}
+                width={185}
+                height={278}
+                className="rounded border object-cover"
+              />
+            ) : (
                 <div className="w-[185px] h-[278px] rounded border bg-gray-50 grid place-items-center text-[12px] text-gray-500">
                   Sem imagem
                 </div>
@@ -93,16 +108,18 @@ export default async function BetCategoryPage({
 
               <div className="flex-1">
                 <div className="font-medium">{n.name}</div>
-                {isSelected && <div className="text-xs text-green-700 mt-1">Sua aposta atual</div>}
+                {isSelected && (
+                  <div className="text-xs text-green-700 mt-1">Sua aposta atual</div>
+                )}
               </div>
 
-              <form action={confirmBet} className="mt-auto">
-                <input type="hidden" name="category_id" value={categoryId} />
-                <input type="hidden" name="nominee_id" value={n.id} />
-                <Button type="submit" disabled={!betsOpen} variant={isSelected ? 'outline' : 'default'}>
-                  {betsOpen ? (isSelected ? 'Atualizar Aposta' : 'Confirmar Aposta') : 'Encerrado'}
-                </Button>
-              </form>
+              {/* Integração do componente cliente que chama a Server Action e mostra toasts */}
+              <BetConfirmForm
+                categoryId={categoryId}
+                nomineeId={n.id}
+                isSelected={isSelected}
+                betsOpen={betsOpen}
+              />
             </li>
           )
         })}
