@@ -57,28 +57,31 @@ describe('bets/actions: confirmBet', () => {
     });
     const mod = await vi.importActual<any>('@/lib/supabase/server');
     vi.spyOn(mod, 'createServerSupabaseClient').mockResolvedValue(supabase);
-
-    // Usuário autenticado
-    vi.spyOn(supabase.auth, 'getUser').mockResolvedValueOnce({ data: { user: { id: 'u1', email: 'x@y.z' } } });
-
+  
+    // ✅ Mockar o mesmo usuário em TODAS as chamadas subsequentes
+    vi.spyOn(supabase.auth, 'getUser').mockResolvedValue({
+      data: { user: { id: 'u1', email: 'x@y.z' } }
+    } as any);
+  
     // Primeira aposta
     let fd = new FormData();
     fd.set('category_id', 'cat_1');
     fd.set('nominee_id', 'n1');
     let res = await confirmBet(fd);
     expect(res.ok).toBe(true);
-
-    // Mudar aposta para outro nominee (se existir)
+  
+    // Inserir outro nominee na mesma categoria
     const store = (supabase as any).__store;
     store.nominees.push({ id: 'n2', category_id: 'cat_1', name: 'Beta' });
-
+  
+    // Segunda aposta (update da mesma linha por onConflict user_id,category_id)
     fd = new FormData();
     fd.set('category_id', 'cat_1');
     fd.set('nominee_id', 'n2');
     res = await confirmBet(fd);
     expect(res.ok).toBe(true);
-
-    // Confirma que a linha foi atualizada (mesmo user e categoria)
+  
+    // ✅ Verifica que atualizou a mesma linha para 'n2'
     const betsForUserCat = store.bets.filter((b: any) => b.user_id === 'u1' && b.category_id === 'cat_1');
     expect(betsForUserCat.length).toBe(1);
     expect(betsForUserCat[0].nominee_id).toBe('n2');
