@@ -13,12 +13,16 @@ function getLanguage(): string {
   return process.env.TMDB_LANGUAGE || 'pt-BR';
 }
 
-export function getTmdbImageUrl(path?: string, size: 'list' | 'detail' = 'list'): string | null {
+export function getTmdbImageUrl(
+  path?: string,
+  size: 'list' | 'detail' = 'list'
+): string | null {
   if (!path) return null;
   const base = process.env.TMDB_IMAGE_BASE || 'https://image.tmdb.org/t/p';
-  const sizeName = size === 'detail'
-    ? (process.env.TMDB_IMAGE_SIZE_DETAIL || 'w500')
-    : (process.env.TMDB_IMAGE_SIZE_LIST || 'w185');
+  const sizeName =
+    size === 'detail'
+      ? process.env.TMDB_IMAGE_SIZE_DETAIL || 'w500'
+      : process.env.TMDB_IMAGE_SIZE_LIST || 'w185';
   return `${base}/${sizeName}${path}`;
 }
 
@@ -29,11 +33,10 @@ const fetchJson: FetchJson = async (url, init) => {
     cache: 'no-store', // evite stale em formulários; poderá ajustar para 'force-cache' em páginas estáticas
   });
   if (!res.ok) {
-    -   throw new Error(`TMDB request failed: ${res.status} ${res.statusText}`);
-    +   const status = (res as any).status ?? 500;
-    +   const statusText = (res as any).statusText ?? 'Internal Server Error';
-    +   throw new Error(`TMDB request failed: ${status} ${statusText}`);
-      }
+    const status = (res as any).status ?? 500;
+    const statusText = (res as any).statusText ?? 'Internal Server Error';
+    throw new Error(`TMDB request failed: ${status} ${statusText}`);
+  }
   return res.json() as Promise<any>;
 };
 
