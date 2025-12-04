@@ -2,6 +2,7 @@
 
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { requireAdmin } from '@/lib/auth/requireAdmin'
 
 // Tipos padronizados
 export type ActionError = {
@@ -35,11 +36,14 @@ export type ActionResult<T = void> =
  * createCategory - server action com logging de diagnóstico para investigar
  * por que campos enviados como "1_name"/"1_max_nominees" não estão sendo lidos.
  */
-export async function createCategory(
-  _prevState: any,
-  formData: FormData
-): Promise<ActionResult<{ id: string }>> {
-  const supabase = await createServerSupabaseClient()
+export async function createCategory(_prevState: any, formData: FormData): Promise<ActionResult<{ id: string }>> {
+  const adminCheck = await requireAdmin();
+  if ('error' in adminCheck) {
+    // mapeia para tipos locais
+    const e = adminCheck.error;
+    return { ok: false, error: { code: e.code, message: e.message, field: e.field } as any };
+  }
+  const { supabase } = adminCheck;
 
   const rawName = formData.get('name')
   const rawMax = formData.get('max_nominees')
@@ -164,17 +168,9 @@ export async function toggleCategoryActive(
 ): Promise<ActionResult> {
   const supabase = await createServerSupabaseClient()
 
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) {
-    return {
-      ok: false,
-      error: {
-        code: 'AUTH_NOT_AUTHENTICATED',
-        message: 'Usuário não autenticado',
-        field: 'auth'
-      }
-    }
-  }
+  const adminCheck = await requireAdmin();
+  if ('error' in adminCheck) return { ok: false, error: adminCheck.error as any }
+  const { supabase } = adminCheck;
 
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
@@ -227,6 +223,9 @@ export async function toggleCategoryActiveAction(
   formData: FormData
 ): Promise<ActionResult> {
   const id = String(formData.get('id') || '')
+  const adminCheck = await requireAdmin();
+  if ('error' in adminCheck) return { ok: false, error: adminCheck.error as any }
+  const { supabase } = adminCheck;
 
   // Checkbox nativo: quando marcado -> "on"; quando desmarcado -> null (não existe key)
   const raw = formData.get('nextState')
@@ -266,6 +265,10 @@ export async function editCategory(
   formData: FormData
 ): Promise<ActionResult<{ id: string }>> {
   const supabase = await createServerSupabaseClient()
+
+  const adminCheck = await requireAdmin();
+  if ('error' in adminCheck) return { ok: false, error: adminCheck.error as any }
+  const { supabase } = adminCheck;
 
   // Helpers para leitura segura de FormData
   const getVal = (key: string) => formData.get(key)

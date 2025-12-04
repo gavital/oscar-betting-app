@@ -3,6 +3,7 @@
 
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { requireAdmin } from '@/lib/auth/requireAdmin'
 
 function log(scope: string, message: string, data?: any) {
   const ts = new Date().toISOString();
@@ -42,45 +43,13 @@ export type ActionError = {
 
 export type ActionResult<T = void> = { ok: true; data?: T } | { ok: false; error: ActionError }
 
-async function requireAdmin() {
-  const cid = correlationId();
-  log('requireAdmin', 'start', { cid });
-
-  const supabase = await createServerSupabaseClient();
-
-  const { data: { user } } = await supabase.auth.getUser();
-  log('requireAdmin', 'auth.getUser', { cid, userId: user?.id });
-
-  if (!user) return { supabase, error: { code: 'AUTH_NOT_AUTHENTICATED', message: 'Faça login', field: 'auth' } }
-  
-  const { data: profile, error: profileError } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single()
-  
-  if (profileError) return { supabase, error: { code: 'DB_SELECT_ERROR', message: profileError.message, field: 'role' } }
-  
-  if (profile?.role !== 'admin') return { supabase, error: { code: 'AUTH_FORBIDDEN', message: 'Acesso negado', field: 'role' } }
-  
-  log('requireAdmin', 'profile role', { cid, role: profile?.role })
-
-  if (profile?.role !== 'admin') {
-    log('requireAdmin', 'forbidden: role is not admin', { cid });
-    return { supabase, error: { code: 'AUTH_FORBIDDEN', message: 'Acesso negado', field: 'role' } };
-  }
-  log('requireAdmin', 'ok', { cid });
-
-
-  return { supabase }
-}
-
 export async function importNominees(formData: FormData): Promise<ActionResult<{ imported: number; removedDuplicates: number; truncated: number }>> {
   const cid = correlationId();
   log('createNominee', 'start', { cid });
 
-  const { supabase, error } = await requireAdmin()
-  if (error) return { ok: false, error }
+  const adminCheck = await requireAdmin();
+  if ('error' in adminCheck) return { ok: false, error: adminCheck.error as any }
+  const { supabase } = adminCheck;
 
   const category_id = String(formData.get('category_id') || '')
   const raw = String(formData.get('bulk_text') || '')
@@ -145,8 +114,9 @@ export async function createNominee(formData: FormData): Promise<ActionResult<{ 
   const cid = correlationId();
   log('createNominee', 'start', { cid });
 
-  const { supabase, error } = await requireAdmin()
-  if (error) return { ok: false, error }
+  const adminCheck = await requireAdmin();
+  if ('error' in adminCheck) return { ok: false, error: adminCheck.error as any }
+  const { supabase } = adminCheck;
 
   const category_id = String(formData.get('category_id') || '')
   const name = String(formData.get('name') || '').trim()
@@ -197,8 +167,9 @@ export async function updateNominee(formData: FormData): Promise<ActionResult<{ 
   const cid = correlationId();
   log('createNominee', 'start', { cid });
 
-  const { supabase, error } = await requireAdmin()
-  if (error) return { ok: false, error }
+  const adminCheck = await requireAdmin();
+  if ('error' in adminCheck) return { ok: false, error: adminCheck.error as any }
+  const { supabase } = adminCheck;
 
   const id = String(formData.get('id') || '')
   const name = formData.get('name') != null ? String(formData.get('name')).trim() : undefined
@@ -240,8 +211,9 @@ export async function deleteNominee(formData: FormData): Promise<ActionResult> {
   const cid = correlationId();
   log('createNominee', 'start', { cid });
 
-  const { supabase, error } = await requireAdmin()
-  if (error) return { ok: false, error }
+  const adminCheck = await requireAdmin();
+  if ('error' in adminCheck) return { ok: false, error: adminCheck.error as any }
+  const { supabase } = adminCheck;
 
   const id = String(formData.get('id') || '')
   if (!id) return { ok: false, error: { code: 'VALIDATION_ID_REQUIRED', message: 'ID é obrigatório', field: 'id' } }
@@ -341,13 +313,9 @@ export async function enrichNomineeWithTMDB(formData: FormData) {
     return { ok: false, error: 'INVALID_INPUT' as const }
   }
 
-  const supabase = await createServerSupabaseClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { ok: false, error: 'AUTH_NOT_AUTHENTICATED' as const }
-
-  // Autorização adicional (role admin) se necessário
-  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
-  if (profile?.role !== 'admin') return { ok: false, error: 'AUTH_FORBIDDEN' as const }
+  const adminCheck = await requireAdmin();
+  if ('error' in adminCheck) return { ok: false, error: adminCheck.error as any }
+  const { supabase } = adminCheck;
 
   const apiKey = process.env.TMDB_API_KEY
   if (!apiKey) return { ok: false, error: 'TMDB_API_KEY_MISSING' as const }
@@ -369,7 +337,7 @@ export async function enrichNomineeWithTMDB(formData: FormData) {
   }
 
   const tmdbId = String(first.id)
-  const tmdbData = first // reduzido; considere mapear campos relevantes
+  const tmdbData = first
 
   const { error: upErr } = await supabase
     .from('nominees')
