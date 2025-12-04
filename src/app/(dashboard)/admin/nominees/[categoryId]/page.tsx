@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ConfirmDeleteNomineeForm } from '../_components/ConfirmDeleteNomineeForm'
+import Image from 'next/image'
+import { getTmdbImageUrl } from '@/lib/tmdb/client'
 
 export default async function ManageNomineesPage({
   params,
@@ -82,39 +84,83 @@ export default async function ManageNomineesPage({
         </form>
 
         <ul className="divide-y">
-          {nominees?.map(n => (
-            <li key={n.id} className="flex items-center justify-between py-3">
-              <div className="flex items-center gap-3">
-                <span className="font-medium">{n.name}</span>
-                {n.tmdb_data ? (
-                  <span className="text-xs px-2 py-1 rounded bg-green-100 text-green-700">TMDB OK</span>
-                ) : (
-                  <span className="text-xs px-2 py-1 rounded bg-gray-100 text-gray-600">TMDB Pendente</span>
-                )}
-                {n.is_winner && (
-                  <span className="text-xs px-2 py-1 rounded bg-purple-100 text-purple-700">Vencedor</span>
-                )}
-              </div>
+          {nominees?.map((n) => {
+            // Tenta usar poster_path (filmes); se não houver, tenta profile_path (pessoas)
+            const posterPath =
+              (n as any)?.tmdb_data?.poster_path ??
+              (n as any)?.tmdb_data?.profile_path ??
+              null;
 
-              <div className="flex items-center gap-2">
-                <form action={enrichNomineeWithTMDB} className="flex items-center gap-2">
-                  <input type="hidden" name="nominee_id" value={n.id} />
-                  <input type="hidden" name="category_id" value={categoryId} />
-                  <input type="hidden" name="type" value="movie" />
-                  <Input name="name" placeholder="Título do filme" defaultValue={n.name} className="text-sm w-56" />
-                  <Button variant="outline" className="text-sm">Buscar TMDB</Button>
-                </form>
+            const posterUrl = getTmdbImageUrl(posterPath, 'list');
 
-                <form action={updateNominee} className="flex items-center gap-2">
-                  <input type="hidden" name="id" value={n.id} />
-                  <Input name="name" defaultValue={n.name} className="text-sm w-56" />
-                  <Button variant="outline" className="text-sm">Salvar</Button>
-                </form>
+            return (
+              <li key={n.id} className="flex items-center justify-between py-3">
+                <div className="flex items-center gap-3">
+                  {/* Thumbnail TMDB */}
+                  {posterUrl ? (
+                    <Image
+                      src={posterUrl}
+                      alt={n.name}
+                      width={92}   // ~ metade de w185 mantém nitidez e layout discreto
+                      height={138} // proporção 2:3
+                      className="rounded border bg-gray-50 object-cover"
+                    />
+                  ) : (
+                    <div className="w-[92px] h-[138px] rounded border bg-gray-50 grid place-items-center text-[11px] text-gray-500">
+                      Sem imagem
+                    </div>
+                  )}
 
-                <ConfirmDeleteNomineeForm id={n.id} />
-              </div>
-            </li>
-          ))}
+                  <div className="flex flex-col">
+                    <span className="font-medium">{n.name}</span>
+
+                    {/* Exemplo: mostrar ano do filme se existir */}
+                    {(n as any)?.tmdb_data?.release_date && (
+                      <span className="text-xs text-gray-500">
+                        {new Date((n as any).tmdb_data.release_date).getFullYear()}
+                      </span>
+                    )}
+
+                    {/* Badge de status TMDB */}
+                    {n.tmdb_data ? (
+                      <span className="mt-1 w-fit text-xs px-2 py-1 rounded bg-green-100 text-green-700">
+                        TMDB OK
+                      </span>
+                    ) : (
+                      <span className="mt-1 w-fit text-xs px-2 py-1 rounded bg-gray-100 text-gray-600">
+                        TMDB Pendente
+                      </span>
+                    )}
+
+                    {/* Vencedor */}
+                    {n.is_winner && (
+                      <span className="mt-1 w-fit text-xs px-2 py-1 rounded bg-purple-100 text-purple-700">
+                        Vencedor
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <form action={enrichNomineeWithTMDB} className="flex items-center gap-2">
+                    <input type="hidden" name="nominee_id" value={n.id} />
+                    <input type="hidden" name="category_id" value={categoryId} />
+                    <input type="hidden" name="type" value="movie" />
+                    <Input name="name" placeholder="Título do filme" defaultValue={n.name} className="text-sm w-56" />
+                    <Button variant="outline" className="text-sm">Buscar TMDB</Button>
+                  </form>
+
+                  <form action={updateNominee} className="flex items-center gap-2">
+                    <input type="hidden" name="id" value={n.id} />
+                    <Input name="name" defaultValue={n.name} className="text-sm w-56" />
+                    <Button variant="outline" className="text-sm">Salvar</Button>
+                  </form>
+
+                  <ConfirmDeleteNomineeForm id={n.id} />
+                </div>
+              </li>
+            )
+          })}
         </ul>
       </section>
     </div>

@@ -4,6 +4,7 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { requireAdmin } from '@/lib/auth/requireAdmin'
+import { searchMovieByName, searchPersonByName } from '@/lib/tmdb/client';
 
 function log(scope: string, message: string, data?: any) {
   const ts = new Date().toISOString();
@@ -324,18 +325,11 @@ export async function enrichNomineeWithTMDB(formData: FormData) {
   const apiKey = process.env.TMDB_API_KEY
   if (!apiKey) return { ok: false, error: 'TMDB_API_KEY_MISSING' as const }
 
-  const endpoint =
-    type === 'person'
-      ? `https://api.themoviedb.org/3/search/person?query=${encodeURIComponent(queryName)}&language=pt-BR&include_adult=false&api_key=${apiKey}`
-      : `https://api.themoviedb.org/3/search/movie?query=${encodeURIComponent(queryName)}&language=pt-BR&include_adult=false&api_key=${apiKey}`
+  const results = type === 'person'
+  ? await searchPersonByName(queryName)
+  : await searchMovieByName(queryName)
 
-  const res = await fetch(endpoint, { cache: 'no-store' })
-  if (!res.ok) {
-    return { ok: false, error: 'TMDB_FETCH_FAILED' as const }
-  }
-
-  const json = await res.json() as any
-  const first = Array.isArray(json?.results) ? json.results[0] : null
+const first = Array.isArray(results) ? results[0] : null
   if (!first) {
     return { ok: false, error: 'TMDB_NO_RESULTS' as const }
   }
