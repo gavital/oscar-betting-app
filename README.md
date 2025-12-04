@@ -2,7 +2,7 @@
 
 Aposte com seus amigos nos vencedores do Oscar. Este projeto web permite registrar usuários, gerenciar categorias e indicados, fazer apostas, visualizar ranking e administrar o status de apostas, com autenticação e dados persistidos via Supabase.
 
-> Aviso de Atribuição: Este produto utiliza a API do TMDB, mas não é endossado pelo TMDB.
+> Atribuição TMDB: Este produto utiliza a API do TMDB, mas não é endossado pelo TMDB.
 
 ## ✨ Recursos Principais
 
@@ -32,23 +32,25 @@ Planejadas (conforme requisitos):
 - Next.js 16 (App Router) – `src/app`
   - (auth): login, registro, confirmação, esqueci/reset senha
   - (dashboard)/admin: categorias e indicados (Server Actions)
-  - (dashboard)/bets: registro/edição de apostas (em andamento)
+  - (dashboard)/bets: registro/edição de apostas (actions implementadas; UI em progresso)
   - Rotas de API:
-    - `/api/auth/callback`: troca de código por sessão e bootstrap de perfil
-    - `/api/auth/signout`
-  - Layout global: `src/app/layout.tsx` (providers e Toaster)
+    - `src/app/api/auth/callback/route.ts` – troca de código por sessão e bootstrap de perfil
+    - `src/app/api/auth/signout/route.ts`
+  - Layout global:
+    - `src/app/layout.tsx` (providers e Toaster)
 - Supabase (helpers):
   - `src/lib/supabase/client.ts` (browser)
-  - `src/lib/supabase/server.ts` (SSR; set/remove de cookies como no-op em RSC para evitar 431)
-  - `src/lib/supabase/server-mutable.ts` (rotas API que precisam set/remove)
+  - `src/lib/supabase/server.ts` (SSR; usa `await cookies()` e set/remove no-op em RSC/Actions para evitar 431)
+  - `src/lib/supabase/server-mutable.ts` (rotas API que precisam set/remove de cookies)
 - Autorização centralizada:
-  - `src/lib/auth/requireAdmin.ts` – valida admin por `profiles.role=admin`, com fallback `ADMIN_EMAILS`
-- Tipos do banco: `src/types/database.ts` (profiles, categories, nominees, bets, app_settings)
+  - `src/lib/auth/requireAdmin.ts` – valida admin via `profiles.role=admin` + fallback `ADMIN_EMAILS`
+- Tipos do banco:
+  - `src/types/database.ts` (profiles, categories, nominees, bets, app_settings)
 - Proxy (Next 16):
-  - `src/proxy.ts` – não intercepta `/_next/**` nem assets estáticos (evita quebrar Server Actions)
-- Integração TMDB:
+  - `src/proxy.ts` – matcher único que não intercepta `/_next/**` nem assets, evitando quebrar Server Actions
+- TMDB:
   - `src/lib/tmdb/client.ts` – busca e detalhes (filme/pessoa) e montagem de URL de imagem
-  - UI: pôster em nominees via `next/image` + `getTmdbImageUrl`
+  - UI: pôster de nominees via `next/image` + `getTmdbImageUrl`
 
 ## 🗃️ Modelo de Dados (Supabase)
 
@@ -57,7 +59,7 @@ Tabelas-chave em `src/types/database.ts`:
 - categories: id, name, max_nominees, is_active
 - nominees: id, category_id, name, tmdb_id, tmdb_data, imdb_id (legacy), imdb_data (legacy), is_winner
 - bets: id, user_id, category_id, nominee_id
-- app_settings: key/value (ex.: bets_open)
+- app_settings: key/value (ex.: `bets_open`)
 
 ## 🚀 Começando
 
@@ -97,7 +99,7 @@ TMDB_IMAGE_SIZE_DETAIL=w500
 
 ### Configuração de Imagens (Next Image)
 
-Em `next.config.ts`, o host do TMDB deve estar whitelista​do:
+Em `next.config.ts`, whiteliste o host do TMDB:
 
 ```ts
 import type { NextConfig } from 'next';
@@ -136,9 +138,9 @@ Deploy recomendado: Vercel (Next.js 16).
 
 ## 🔐 Autenticação, Autorização e RLS
 
-- Autenticação: Supabase com verificação de e-mail
-- Autorização: `requireAdmin` centralizado (perfil em `profiles.role`, fallback `ADMIN_EMAILS` em dev)
-- RLS (sugestão aplicada):
+- Autenticação: Supabase com verificação de e-maile rota de callback
+- Autorização: `requireAdmin` centralizado; admins via `profiles.role='admin'` + fallback `ADMIN_EMAILS` em dev
+- RLS sugerido:
   - Função `public.is_admin()` (SECURITY DEFINER)
   - Policies em `categories/nominees`: SELECT público; INSERT/UPDATE/DELETE apenas admin
   - Policies em `bets`: SELECT próprio ou admin; INSERT/UPDATE próprio; DELETE admin
@@ -166,7 +168,7 @@ $$;
 - Cobertura atual:
   - Server Actions: categories (create/edit/toggle), nominees (import/create/update/delete/enrich TMDB), bets (confirmBet)
   - Auth helper: requireAdmin
-  - UI: EditCategoryForm, LoginPage
+  - UI: LoginPage e EditCategoryForm (RTL + jsdom)
 - Mocks principais:
   - Supabase client (encadeável: eq/ilike/neq, count head:true, update/delete thenable, upsert onConflict)
   - `next/cache` (revalidatePath no-op)
@@ -215,17 +217,15 @@ Admin:
 ## 🧯 Troubleshooting
 
 - 431 Request Header Fields Too Large:
-  - Em RSC/Actions, não mutar cookies (helpers SSR com set/remove no-op)
-  - Limpar cookies `sb-...` e reiniciar
-- Dynamic APIs (Next 16):
-  - `cookies()`, `headers()`, `searchParams`, `params` retornam Promise: use `await`
-- next/image unconfigured host:
-  - Configure `images.remotePatterns` para `image.tmdb.org` e reinicie o dev server
-- Server Actions must be async functions:
-  - Em arquivos `'use server'`, exporte apenas funções async; mova utils síncronas para `utils.ts`
+  - Em RSC/Actions, não mutar cookies (helpers SSR com set/remove no-op); limpe cookies `sb-*` se necessário
+- Dynamic APIs:
+  - `cookies()`, `headers()`, `searchParams`, `params` retornam Promise: use `await` em Server Components
+- next/image “unconfigured host”:
+  - Adicione `image.tmdb.org` em `images.remotePatterns` e reinicie dev server
+- Server Actions:
+  - Em arquivos `'use server'`, exporte apenas funções async; mova utilitários síncronos para `utils.ts`
 - Vitest:
-  - Mockar `revalidatePath` e `global.fetch` no setup
-  - Ao usar `vi.spyOn(module, ...)`, importe o módulo (ex.: `import * as Auth from '@/lib/auth/requireAdmin'`)
+  - Mock de `revalidatePath` e `global.fetch` no setup; `vi.spyOn(module)` requer importar o módulo (ex.: `import * as Auth from '@/lib/auth/requireAdmin'`)
 
 ## 🧭 Mapeamento dos Requisitos para Implementação
 
@@ -291,7 +291,11 @@ Admin:
 
 ## 📦 Scripts
 
-- `dev`, `build`, `start`, `lint`, `test`, `test:watch`
+- `dev` — desenvolvimento (Next 16)
+- `build` — build de produção
+- `start` — servidor de produção
+- `lint` — linting
+- `test`, `test:watch` — testes
 
 ## 🤖 CI
 
@@ -311,7 +315,7 @@ Admin:
 
 ## 🤝 Contribuição
 
-Contribuições são bem-vindas! Abra issues e PRs com descrições claras e foque em segurança, performance e qualidade.
+Contribuições são bem-vindas! Abra issues e PRs com descrições claras. Priorize segurança, performance e qualidade.
 
 ## 📄 Licença
 
