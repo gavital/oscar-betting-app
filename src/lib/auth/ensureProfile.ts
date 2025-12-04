@@ -25,15 +25,15 @@ export async function ensureProfile() {
   const emailIsAdmin = user.email ? admins.has(user.email.toLowerCase()) : false;
 
   // 1) Tenta ler o profile existente
-  const { data: existing } = await supabase
+  const { data: profileRow, error: selectErr } = await supabase
     .from('profiles')
     .select('id, name, role')
     .eq('id', user.id)
     .maybeSingle();
 
   // 2) Se existir, normaliza e promove se necessário
-  if (existing) {
-    const currentRole = (existing.role ?? 'user').toLowerCase();
+  if (profileRow) {
+    const currentRole = (profileRow.role ?? 'user').toLowerCase();
     if (emailIsAdmin && currentRole !== 'admin') {
       await supabase
         .from('profiles')
@@ -46,11 +46,11 @@ export async function ensureProfile() {
         .eq('id', user.id)
         .single();
 
-      return { supabase, user, profile: promoted ?? { ...existing, role: 'admin' } };
+        return { supabase, user, profile: { ...promoted, role: (promoted?.role ?? 'user').toLowerCase() } };
     }
 
     // Garantir retorno com role normalizado
-    return { supabase, user, profile: { ...existing, role: currentRole } };
+    return { supabase, user, profile: { ...profileRow, role: currentRole } };
   }
 
   // 3) Se não existir, cria com base no metadata/ADMIN_EMAILS
@@ -71,31 +71,11 @@ export async function ensureProfile() {
       { onConflict: 'id' }
     );
 
-  // Dentro de ensureProfile(), após obter user
-  const debug = process.env.DEBUG_AUTH === '1';
-  if (debug) {
-    console.log('[ensureProfile] user', { id: user?.id, email: user?.email });
-  }
-
-  // Ao selecionar profile:
-  const { data: existing, error: existingErr } = await supabase
-    .from('profiles')
-    .select('id, name, role')
-    .eq('id', user.id)
-    .maybeSingle();
-
-  if (debug) {
-    console.log('[ensureProfile] select profile', { existing, error: existingErr?.message });
-  }
-
-  const { data: profile } = await supabase
+    const { data: created } = await supabase
     .from('profiles')
     .select('id, name, role')
     .eq('id', user.id)
     .single();
 
-  // Normaliza role ao retornar
-  if (profile) profile.role = (profile.role ?? 'user').toLowerCase();
-
-  return { supabase, user, profile };
+    return { supabase, user, profile: created ? { ...created, role: (created.role ?? 'user').toLowerCase() } : null };
 }
