@@ -171,6 +171,37 @@ export function createSupabaseStub(initial: Partial<TableStore> = {}) {
             },
           };
         },
+
+        // UPSERT (suporte básico para bets por (user_id, category_id))
+        upsert(payload: Row | Row[], options?: { onConflict?: string }) {
+          const arr = Array.isArray(payload) ? payload : [payload];
+          let lastError: any = null;
+
+          if (table === 'bets') {
+            const onConflict = options?.onConflict ?? 'user_id,category_id';
+            const keys = onConflict.split(',').map(k => k.trim());
+
+            arr.forEach(p => {
+              const rows = store.bets ?? [];
+              const foundIdx = rows.findIndex(r => keys.every(k => String(r[k]) === String(p[k])));
+              if (foundIdx >= 0) {
+                // update existente
+                store.bets[foundIdx] = { ...rows[foundIdx], ...p };
+              } else {
+                const id = p.id ?? `bet_${Math.random().toString(36).slice(2, 10)}`;
+                store.bets = [...rows, { ...p, id }];
+              }
+            });
+          } else {
+            // comportamento genérico: inserção simples
+            arr.forEach(p => {
+              const id = p.id ?? `id_${Math.random().toString(36).slice(2, 10)}`;
+              store[table] = [...(store[table] ?? []), { ...p, id }];
+            });
+          }
+
+          return Promise.resolve({ error: lastError });
+        },
       };
     },
   } as any;
