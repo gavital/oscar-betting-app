@@ -26,9 +26,13 @@ describe('import nominees helpers', () => {
 describe('admin/nominees actions', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
-    delete (global as any).fetch;
+    // Garante que fetch exista (evita falha ao fazer spy)
+    if (!(global as any).fetch) {
+      (global as any).fetch = vi.fn();
+    }
     delete process.env.TMDB_API_KEY;
   });
+
 
   it('importNominees: dedup, limite respeitado (sem replace)', async () => {
     const supabase: any = createSupabaseStub({
