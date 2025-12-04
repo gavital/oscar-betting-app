@@ -9,6 +9,14 @@ vi.mock('next/cache', () => {
   };
 });
 
+// Disponibiliza fetch no ambiente de teste (Node), permitindo vi.spyOn(global, 'fetch')
+if (!(globalThis as any).fetch) {
+  vi.stubGlobal('fetch', vi.fn()); // stub básico; os testes sobrescrevem com mockResolvedValueOnce
+}
+
+// Variáveis de ambiente padrão
 process.env.ADMIN_EMAILS = process.env.ADMIN_EMAILS || 'admin@example.com';
-process.env.NEXT_PUBLIC_SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://localhost:54321';
-process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'anon-key';
+process.env.NEXT_PUBLIC_SUPABASE_URL =
+  process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://localhost:54321';
+process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY =
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'anon-key';
