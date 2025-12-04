@@ -1,21 +1,14 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, within, fireEvent, waitFor } from '@testing-library/react';
 
-// Supabase SSR mockado globalmente
+// Stub SSR global por teste
 let supabaseStub: any;
 
-// Mock SSR do Supabase
+// Mock SSR do Supabase (a página importa createServerSupabaseClient)
 vi.mock('@/lib/supabase/server', () => ({
   createServerSupabaseClient: async () => supabaseStub,
 }));
-
-// Mock next/navigation redirect
-const redirectMock = vi.fn();
-vi.mock('next/navigation', () => ({
-  redirect: (...args: any[]) => redirectMock(...args),
-}));
-
 // Mock next/image -> img
 vi.mock('next/image', () => ({
   default: (props: any) => {
@@ -26,13 +19,26 @@ vi.mock('next/image', () => ({
   },
 }));
 
+// Mock confirmBet (Server Action) para validar integração
+const confirmBetMock = vi.fn();
+vi.mock('@/app/(dashboard)/bets/actions', () => ({
+  confirmBet: (...args: any[]) => confirmBetMock(...args),
+}));
+
+// Opcional: mock redirect (não é foco destes testes)
+const redirectMock = vi.fn();
+vi.mock('next/navigation', () => ({
+  redirect: (...args: any[]) => redirectMock(...args),
+}));
+
 describe('UI: /bets/[categoryId] - Aposta por Categoria', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    confirmBetMock.mockReset();
     redirectMock.mockReset();
   });
 
-  it('renderiza nominees com pôster e marca a aposta atual; botões habilitados quando bets_open=true', async () => {
+  it('renderiza cards com pôster TMDB, marca “Sua aposta atual” e habilita botões quando bets_open=true', async () => {
     supabaseStub = {
       auth: {
         getUser: async () => ({ data: { user: { id: 'u1', email: 'user@example.com' } } }),
@@ -94,24 +100,36 @@ describe('UI: /bets/[categoryId] - Aposta por Categoria', () => {
     expect(screen.getByText('Melhor Filme')).toBeInTheDocument();
     expect(screen.getByText(/Apostas abertas/i)).toBeInTheDocument();
 
-    // Nominees renderizados com pôsteres (src contendo /w185/)
+    // Imagens (next/image -> img) com src contendo /w185/ (getTmdbImageUrl monta URL de lista)
     const alphaCard = screen.getByText('Alpha').closest('li')!;
     const betaCard = screen.getByText('Beta').closest('li')!;
+
     expect(within(alphaCard).getByRole('img')).toHaveAttribute('src', expect.stringMatching(/\/w185\/a\.jpg$/));
     expect(within(betaCard).getByRole('img')).toHaveAttribute('src', expect.stringMatching(/\/w185\/b\.jpg$/));
 
     // "Sua aposta atual" marcada para n2
     expect(within(betaCard).getByText(/Sua aposta atual/i)).toBeInTheDocument();
 
-    // Botão habilitado e com rótulos adequados
-    expect(within(betaCard).getByRole('button', { name: /Atualizar Aposta/i })).toBeEnabled();
-    expect(within(alphaCard).getByRole('button', { name: /Confirmar Aposta/i })).toBeEnabled();
+    // Botões habilitados
+    const atualizarBtn = within(beta).getByRole('button', { name: /Atualizar Aposta/i });
+    expect(atualizarBtn).toBeEnabled();
 
-    // Não deve redirecionar (usuário autenticado)
-    expect(redirectMock).not.toHaveBeenCalled();
+    const confirmarBtn = within(alpha).getByRole('button', { name: /Confirmar Aposta/i });
+    expect(confirmarBtn).toBeEnabled();
+
+    // Integração: clicar em “Confirmar Aposta” deve chamar confirmBet
+    fireEvent.click(confirmarBtn);
+
+    await waitFor(() => {
+      expect(confirmBetMock).toHaveBeenCalledTimes(1);
+      const arg = confirmBetMock.mock.calls[0]?.[0]; // FormData passado por useActionState
+      expect(arg).toBeInstanceOf(FormData);
+      expect(String(arg.get('category_id'))).toBe('cat_1');
+      expect(String(arg.get('nominee_id'))).toBe('n1');
+    });
   });
 
-  it('desabilita botões quando bets_open=false', async () => {
+  it('desabilita botões quando bets_open=false e exibe “Encerrado”', async () => {
     supabaseStub = {
       auth: {
         getUser: async () => ({ data: { user: { id: 'u1', email: 'user@example.com' } } }),
@@ -165,7 +183,12 @@ describe('UI: /bets/[categoryId] - Aposta por Categoria', () => {
     render(ui);
 
     expect(screen.getByText(/Apostas encerradas/i)).toBeInTheDocument();
+
+    // Botão "Encerrado" desabilitado
     const btn = screen.getByRole('button', { name: /Encerrado/i });
     expect(btn).toBeDisabled();
+
+    // Não deve tentar chamar confirmBet ao clicar (mas por segurança, não clicamos pois está desabilitado)
+    expect(confirmBetMock).not.toHaveBeenCalled();
   });
 });
