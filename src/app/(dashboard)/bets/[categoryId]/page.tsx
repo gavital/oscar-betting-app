@@ -26,7 +26,14 @@ export default async function BetCategoryPage({
     .single()
 
   if (catErr || !category) {
-    return <div className="text-sm text-red-600">Categoria não encontrada.</div>
+    return (
+      <div className="space-y-3">
+        <div className="text-sm text-red-600">Categoria não encontrada.</div>
+        <Link href="/bets">
+          <Button variant="outline">Voltar</Button>
+        </Link>
+      </div>
+    )
   }
 
   // Status de apostas (app_settings.bets_open) - fallback: aberto
@@ -50,7 +57,14 @@ export default async function BetCategoryPage({
     .order('name')
 
   if (nomErr) {
-    return <div className="text-sm text-red-600">Erro ao carregar indicados: {nomErr.message}</div>
+    return (
+      <div className="space-y-3">
+        <div className="text-sm text-red-600">Erro ao carregar indicados: {nomErr.message}</div>
+        <Link href="/bets">
+          <Button variant="outline">Voltar</Button>
+        </Link>
+      </div>
+    )
   }
 
   // Aposta existente do usuário nesta categoria
@@ -118,7 +132,7 @@ export default async function BetCategoryPage({
                 categoryId={categoryId}
                 nomineeId={n.id}
                 isSelected={isSelected}
-                betsOpen={betsOpen}
+                betsOpen={!!betsOpen}
               />
             </li>
           )
