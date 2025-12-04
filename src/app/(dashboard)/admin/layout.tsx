@@ -1,20 +1,14 @@
 // src/app/(dashboard)/admin/layout.tsx
 import { ReactNode } from 'react';
 import { redirect } from 'next/navigation';
-import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { ensureProfile } from '@/lib/auth/ensureProfile';
 
 export default async function AdminLayout({ children }: { children: ReactNode }) {
-  const supabase = await createServerSupabaseClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { user, profile } = await ensureProfile();
   if (!user) redirect('/login');
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single();
-
-  if (profile?.role !== 'admin') redirect('/');
+  const role = profile?.role ?? 'user';
+  if (role !== 'admin') redirect('/');
 
   return (
     <div className="py-8">
