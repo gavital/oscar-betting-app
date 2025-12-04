@@ -7,7 +7,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   const { user, profile } = await ensureProfile();
   if (!user) redirect('/login');
 
-  const role = profile?.role ?? 'user';
+  const role = (profile?.role ?? 'user').toLowerCase();
   if (role !== 'admin') redirect('/');
 
   return (

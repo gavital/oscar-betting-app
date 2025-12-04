@@ -13,13 +13,16 @@ function parseAdminEmails(): Set<string> {
 
 /**
  * Garante que exista uma linha em public.profiles para o usuário atual.
- * - Se o e-mail estiver em ADMIN_EMAILS, define role = 'admin'
- * - Caso contrário, mantém/metadado ou 'user'
+ * - Se o e-mail estiver em ADMIN_EMAILS, promove a "admin" (mesmo se já existir).
+ * - Normaliza role para lowercase.
  */
 export async function ensureProfile() {
   const supabase = await createServerSupabaseClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { supabase, user: null, profile: null };
+
+  const admins = parseAdminEmails();
+  const emailIsAdmin = user.email ? admins.has(user.email.toLowerCase()) : false;
 
   // 1) Tenta ler o profile existente
   const { data: existing } = await supabase
@@ -28,18 +31,33 @@ export async function ensureProfile() {
     .eq('id', user.id)
     .maybeSingle();
 
+  // 2) Se existir, normaliza e promove se necessário
   if (existing) {
-    return { supabase, user, profile: existing };
+    const currentRole = (existing.role ?? 'user').toLowerCase();
+    if (emailIsAdmin && currentRole !== 'admin') {
+      await supabase
+        .from('profiles')
+        .update({ role: 'admin', updated_at: new Date().toISOString() })
+        .eq('id', user.id);
+
+      const { data: promoted } = await supabase
+        .from('profiles')
+        .select('id, name, role')
+        .eq('id', user.id)
+        .single();
+
+      return { supabase, user, profile: promoted ?? { ...existing, role: 'admin' } };
+    }
+
+    // Garantir retorno com role normalizado
+    return { supabase, user, profile: { ...existing, role: currentRole } };
   }
 
-  // 2) Se não existir, cria
-  const admins = parseAdminEmails();
-  const isAdmin = user.email ? admins.has(user.email.toLowerCase()) : false;
-
+  // 3) Se não existir, cria com base no metadata/ADMIN_EMAILS
   const meta = user.user_metadata ?? {};
   const name = (meta.name as string) ?? user.email?.split('@')[0] ?? 'Usuário';
   const role: 'user' | 'admin' =
-    isAdmin ? 'admin' : ((meta.role as 'user' | 'admin') ?? 'user');
+    emailIsAdmin ? 'admin' : ((meta.role as 'user' | 'admin') ?? 'user');
 
   await supabase
     .from('profiles')
@@ -53,12 +71,14 @@ export async function ensureProfile() {
       { onConflict: 'id' }
     );
 
-  // 3) Lê novamente para devolver o profile
   const { data: profile } = await supabase
     .from('profiles')
     .select('id, name, role')
     .eq('id', user.id)
     .single();
+
+  // Normaliza role ao retornar
+  if (profile) profile.role = (profile.role ?? 'user').toLowerCase();
 
   return { supabase, user, profile };
 }
