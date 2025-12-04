@@ -2,20 +2,25 @@
 
 Aposte com seus amigos nos vencedores do Oscar. Este projeto web permite registrar usuários, gerenciar categorias e indicados, fazer apostas, visualizar ranking e administrar o status de apostas, com autenticação e dados persistidos via Supabase.
 
+> Aviso de Atribuição: Este produto utiliza a API do TMDB, mas não é endossado pelo TMDB.
+
 ## ✨ Recursos Principais
 
 - Registro de usuário com verificação de e-mail (Supabase)
 - Login seguro com feedback de sucesso/erro
 - Proteção de rotas para áreas restritas (bets, ranking, admin)
-- Gestão de categorias (Admin): listar e criar categorias
+- Gestão de categorias (Admin): listar, criar, editar e ativar/desativar
+- Gestão de indicados (Admin): CRUD, importação em massa com dedupe e limite por categoria
+- Enriquecimento de indicados com dados do TMDB (pôster, dados principais)
 - Tipagem forte do banco de dados (Supabase types)
 - UI moderna com Tailwind v4 e shadcn
+- Testes com Vitest (Server Actions e UI) e CI via GitHub Actions
 
 Planejadas (conforme requisitos):
-- Gestão de Indicados (Admin) com importação rápida e enriquecimento IMDB
-- Registro de Apostas (Usuário) com visual atraente e dados IMDB
+- Registro/gestão de apostas (UI completa)
+- Gestão de Indicados (Admin) com importação rápida e enriquecimento TMDB
 - Gestão de Apostas (Usuário): editar e filtrar apostas
-- Visualização de Apostas de Outros Participantes
+- Visualização de apostas de outros participantes
 - Registro de Vencedores (Admin)
 - Ranking de Usuários
 - Interrupção de Apostas (Admin)
@@ -24,42 +29,35 @@ Planejadas (conforme requisitos):
 
 ## 🏗️ Arquitetura
 
-- Next.js App Router (`src/app`)
-  - Autenticação:
-    - `src/app/(auth)/login/page.tsx`
-    - `src/app/(auth)/register/page.tsx`
-    - `src/app/(auth)/confirm/page.tsx`
-    - `src/app/(auth)/forgot-password/page.tsx`
-    - `src/app/(auth)/reset-password/page.tsx`
-  - Admin:
-    - `src/app/(dashboard)/admin/layout.tsx` (verifica role admin)
-    - `src/app/(dashboard)/admin/categories/*` (listagem/criação/edição)
-    - `src/app/(dashboard)/admin/nominees/*` (importação em massa, CRUD)
-  - API Routes:
-    - `src/app/api/auth/callback/route.ts` (troca code por sessão)
-    - `src/app/api/auth/signout/route.ts`
-  - Layout global:
-    - `src/app/layout.tsx` (providers e Toaster)
+- Next.js 16 (App Router) – `src/app`
+  - (auth): login, registro, confirmação, esqueci/reset senha
+  - (dashboard)/admin: categorias e indicados (Server Actions)
+  - (dashboard)/bets: registro/edição de apostas (em andamento)
+  - Rotas de API:
+    - `/api/auth/callback`: troca de código por sessão e bootstrap de perfil
+    - `/api/auth/signout`
+  - Layout global: `src/app/layout.tsx` (providers e Toaster)
 - Supabase (helpers):
   - `src/lib/supabase/client.ts` (browser)
-  - `src/lib/supabase/server.ts` (SSR – sem mutação de cookies em RSC/Actions)
-  - `src/lib/supabase/server-mutable.ts` (rotas API com mutação de cookies)
-- Providers:
-  - `src/providers/SupabaseProvider.tsx`
-  - `src/providers/TanstackProvider.tsx`
-- Tipagem do banco:
-  - `src/types/database.ts` (profiles, categories, nominees, bets, app_settings)
-- Proxy (substitui middleware no Next 16):
-  - `src/proxy.ts` (não intercepta rotas internas `/_next/**`)
+  - `src/lib/supabase/server.ts` (SSR; set/remove de cookies como no-op em RSC para evitar 431)
+  - `src/lib/supabase/server-mutable.ts` (rotas API que precisam set/remove)
+- Autorização centralizada:
+  - `src/lib/auth/requireAdmin.ts` – valida admin por `profiles.role=admin`, com fallback `ADMIN_EMAILS`
+- Tipos do banco: `src/types/database.ts` (profiles, categories, nominees, bets, app_settings)
+- Proxy (Next 16):
+  - `src/proxy.ts` – não intercepta `/_next/**` nem assets estáticos (evita quebrar Server Actions)
+- Integração TMDB:
+  - `src/lib/tmdb/client.ts` – busca e detalhes (filme/pessoa) e montagem de URL de imagem
+  - UI: pôster em nominees via `next/image` + `getTmdbImageUrl`
 
 ## 🗃️ Modelo de Dados (Supabase)
 
 Tabelas-chave em `src/types/database.ts`:
 - profiles: id, name, role (user/admin)
 - categories: id, name, max_nominees, is_active
-- nominees: id, category_id, name, imdb_id, imdb_data, is_winner
+- nominees: id, category_id, name, tmdb_id, tmdb_data, imdb_id (legacy), imdb_data (legacy), is_winner
 - bets: id, user_id, category_id, nominee_id
-- app_settings: key/value (ex.: status de apostas e mensagens)
+- app_settings: key/value (ex.: bets_open)
 
 ## 🚀 Começando
 
@@ -81,22 +79,51 @@ npm install
 Crie `.env.local` na raiz:
 
 ```env
+# Supabase
 NEXT_PUBLIC_SUPABASE_URL=https://<sua-instancia>.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=<sua-anon-key>
 NEXT_PUBLIC_APP_URL=http://localhost:3000
+
+# Bootstrap de admins (opcional; dev)
+ADMIN_EMAILS=seu.email@dominio.com,outro.admin@dominio.com
+
+# TMDB
+TMDB_API_KEY=<sua-api-key-tmdb>
+TMDB_LANGUAGE=pt-BR
+TMDB_IMAGE_BASE=https://image.tmdb.org/t/p
+TMDB_IMAGE_SIZE_LIST=w185
+TMDB_IMAGE_SIZE_DETAIL=w500
 ```
+
+### Configuração de Imagens (Next Image)
+
+Em `next.config.ts`, o host do TMDB deve estar whitelista​do:
+
+```ts
+import type { NextConfig } from 'next';
+
+const nextConfig: NextConfig = {
+  images: {
+    remotePatterns: [
+      { protocol: 'https', hostname: 'image.tmdb.org', pathname: '/t/p/**' },
+    ],
+  },
+};
+
+export default nextConfig;
+```
+
+Após alterar o `next.config.ts`, reinicie o servidor (`npm run dev`).
 
 ### Desenvolvimento
 
 ```bash
 npm run dev
+# ou sem webpack:
+npx next dev
 ```
 
 Acesse http://localhost:3000
-Dica: se observar inconsistências com Server Actions em dev, teste sem `--webpack`:
-```bash
-npx next dev
-```
 
 ### Build e Produção
 
@@ -107,34 +134,98 @@ npm start
 
 Deploy recomendado: Vercel (Next.js 16).
 
-## 🔐 Autenticação, Autorização e Proteção de Rotas
+## 🔐 Autenticação, Autorização e RLS
 
-- Autenticação via Supabase, com fluxo de verificação por e-mail
-- Proteção baseada em `profiles.role` (user/admin) nas páginas do dashboard
-- Server Actions realizam mutações com `createServerSupabaseClient` (SSR) e revalidam rotas
+- Autenticação: Supabase com verificação de e-mail
+- Autorização: `requireAdmin` centralizado (perfil em `profiles.role`, fallback `ADMIN_EMAILS` em dev)
+- RLS (sugestão aplicada):
+  - Função `public.is_admin()` (SECURITY DEFINER)
+  - Policies em `categories/nominees`: SELECT público; INSERT/UPDATE/DELETE apenas admin
+  - Policies em `bets`: SELECT próprio ou admin; INSERT/UPDATE próprio; DELETE admin
 
-### Helpers SSR do Supabase
+Exemplo de função:
 
-- `src/lib/supabase/server.ts`:
-  - Usa `await cookies()` (Next 16 Dynamic API)
-  - Não muta cookies em Server Components/Server Actions (set/remove no-op) para evitar erro 431
-- `src/lib/supabase/server-mutable.ts`:
-  - Para rotas de API que precisam persistir cookies (ex.: `GET /api/auth/callback`, signout)
+```sql
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.profiles p
+    WHERE p.id = auth.uid() AND lower(p.role) = 'admin'
+  );
+$$;
+```
 
-### Proxy no Next 16
+## 🧪 Testes
 
-- `src/proxy.ts`: um único `matcher` exclui rotas internas `/_next/**` e assets estáticos
-- Não colocar lógica de autenticação no proxy; autorização é feita nas páginas/actions
+- Test runner: Vitest
+- Cobertura atual:
+  - Server Actions: categories (create/edit/toggle), nominees (import/create/update/delete/enrich TMDB), bets (confirmBet)
+  - Auth helper: requireAdmin
+  - UI: EditCategoryForm, LoginPage
+- Mocks principais:
+  - Supabase client (encadeável: eq/ilike/neq, count head:true, update/delete thenable, upsert onConflict)
+  - `next/cache` (revalidatePath no-op)
+  - `global.fetch` para TMDB (stub global)
+- Comandos:
+```bash
+npm run test
+npm run test:watch
+```
 
-## 👩‍💻 Funcionalidades por Perfil
+## 🎯 Funcionalidades (status)
 
 Usuário:
-- Registro, Login, Confirmação de Email
-- Futuro: Minhas Apostas, Visualização e Edição de Apostas, Ranking, Perfil
+- Registro, Login, Confirmar e-mail – OK
+- “Esqueci minha senha” – em progresso (UI presente; ligar ao fluxo)
+- Minhas Apostas & edição – em progresso (actions cobertas; UI a construir)
+- Ranking e comparações – planejado
+- Perfil – planejado
 
 Admin:
-- Gestão de Categorias (listagem e criação já implementadas)
-- Futuro: Gestão de Indicados, Registro de Vencedores, Controle de Apostas (abertas/fechadas)
+- Categorias: listar, criar, editar, ativar/desativar – OK
+- Indicados: CRUD, importação em massa, TMDB enrich – OK
+- Registro de vencedores – planejado
+- Controle de apostas (abertas/fechadas) – planejado
+
+## 🧰 Integração TMDB
+
+- Client: `src/lib/tmdb/client.ts`
+  - `searchMovieByName`, `searchPersonByName`, `getTmdbImageUrl`
+- UI:
+  - Miniatura do pôster na lista de indicados via `next/image` + `getTmdbImageUrl`
+- Server Action `enrichNomineeWithTMDB`:
+  - Busca TMDB; captura erros (`TMDB_FETCH_FAILED`) e trata `TMDB_NO_RESULTS`
+  - Atualiza `tmdb_id` e `tmdb_data` no Supabase
+
+> Este produto utiliza a API do TMDB, mas não é endossado pelo TMDB.
+
+## 🧭 Padrões e Convenções
+
+- Server Actions para mutações (admin e bets)
+- Helpers Supabase em `lib/supabase/*`; cookies no SSR com `await cookies()` (Next 16)
+- Providers: `SupabaseProvider`, `TanstackProvider`
+- `requireAdmin` em `lib/auth/requireAdmin`
+- Tipos do banco: `types/database.ts`
+
+## 🧯 Troubleshooting
+
+- 431 Request Header Fields Too Large:
+  - Em RSC/Actions, não mutar cookies (helpers SSR com set/remove no-op)
+  - Limpar cookies `sb-...` e reiniciar
+- Dynamic APIs (Next 16):
+  - `cookies()`, `headers()`, `searchParams`, `params` retornam Promise: use `await`
+- next/image unconfigured host:
+  - Configure `images.remotePatterns` para `image.tmdb.org` e reinicie o dev server
+- Server Actions must be async functions:
+  - Em arquivos `'use server'`, exporte apenas funções async; mova utils síncronas para `utils.ts`
+- Vitest:
+  - Mockar `revalidatePath` e `global.fetch` no setup
+  - Ao usar `vi.spyOn(module, ...)`, importe o módulo (ex.: `import * as Auth from '@/lib/auth/requireAdmin'`)
 
 ## 🧭 Mapeamento dos Requisitos para Implementação
 
@@ -188,15 +279,6 @@ Admin:
 - zod, react-hook-form
 - lucide-react, sonner
 
-## 📚 Padrões e Convenções
-
-- Server Actions para operações no Admin (ex.: `createCategory`)
-- Cookies para Supabase (helpers em `src/lib/supabase/server.ts`)
-- Providers no layout (`SupabaseProvider`, `TanstackProvider`)
-- Tipos fortes do banco gerados em `src/types/database.ts`
-- Rotas App Router em `src/app`, com agrupadores por segmento `(auth)`, `(dashboard)`
-
-
 ## 🔒 Segurança e Boas Práticas
 
 - Não commitar segredos (use `.env.local`)
@@ -209,22 +291,23 @@ Admin:
 
 ## 📦 Scripts
 
-- `npm run dev` — desenvolvimento (Next 16, Webpack habilitado)
-- `npm run build` — build de produção
-- `npm start` — servidor de produção
-- `npm run lint` — linting
+- `dev`, `build`, `start`, `lint`, `test`, `test:watch`
+
+## 🤖 CI
+
+- Workflow: `.github/workflows/ci.yml`
+  - Node 20; cache npm; lint, build, test
+  - Env dummy para testes (sem dependências externas)
 
 ## 🗺️ Roadmap
 
-- Implementar `toggleCategoryActive` para Admin
-- Implementar gestão completa de Indicados com importação e IMDB
-- Construir páginas de Apostas e Minhas Apostas
-- Registrar Vencedores e atualizar o Ranking
-- Página de Ranking com pódio e detalhes por usuário
+- UI completa de Apostas e Minhas Apostas
+- Registro de vencedores e cálculo de Ranking
+- Página de Ranking (pódio e detalhes por usuário)
 - Controle de Apostas (abertas/fechadas) com agendamento e mensagem
-- Homepage com estatísticas e conteúdo IMDB
+- Homepage com estatísticas
 - Perfil do usuário e “Esqueci minha senha”
-- Suite de testes e documentação de API interna
+- E2E com Playwright
 
 ## 🤝 Contribuição
 
