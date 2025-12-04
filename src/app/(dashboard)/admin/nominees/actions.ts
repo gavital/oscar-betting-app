@@ -5,6 +5,7 @@ import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { requireAdmin } from '@/lib/auth/requireAdmin'
 import { searchMovieByName, searchPersonByName } from '@/lib/tmdb/client';
+import { normalizeNomineeName } from './utils';
 
 function log(scope: string, message: string, data?: any) {
   const ts = new Date().toISOString();

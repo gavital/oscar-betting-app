@@ -29,8 +29,11 @@ const fetchJson: FetchJson = async (url, init) => {
     cache: 'no-store', // evite stale em formulários; poderá ajustar para 'force-cache' em páginas estáticas
   });
   if (!res.ok) {
-    throw new Error(`TMDB request failed: ${res.status} ${res.statusText}`);
-  }
+    -   throw new Error(`TMDB request failed: ${res.status} ${res.statusText}`);
+    +   const status = (res as any).status ?? 500;
+    +   const statusText = (res as any).statusText ?? 'Internal Server Error';
+    +   throw new Error(`TMDB request failed: ${status} ${statusText}`);
+      }
   return res.json() as Promise<any>;
 };
 

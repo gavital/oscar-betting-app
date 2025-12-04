@@ -8,7 +8,7 @@ import { HighlightAndScroll } from './HighlightAndScroll'
 export default async function AdminCategoriesPage({
   searchParams,
 }: {
-  searchParams?: { [key: string]: string | string[] | undefined }
+  searchParams?: Promise<{ [key: string]: string | string[] | undefined }>
 }) {
   const supabase = await createServerSupabaseClient()
 
@@ -21,9 +21,10 @@ export default async function AdminCategoriesPage({
     return <div>Erro ao carregar categorias: {error.message}</div>
   }
 
-  const highlightParam = Array.isArray(searchParams?.highlight)
-    ? searchParams?.highlight[0]
-    : searchParams?.highlight
+  const sp = searchParams ? await searchParams : undefined
+  const highlightParam = Array.isArray(sp?.highlight)
+    ? sp?.highlight[0]
+    : sp?.highlight
 
   return (
     <div className="space-y-6">
