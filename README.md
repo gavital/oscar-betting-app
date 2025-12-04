@@ -138,7 +138,7 @@ Deploy recomendado: Vercel (Next.js 16).
 
 ## 🔐 Autenticação, Autorização e RLS
 
-- Autenticação: Supabase com verificação de e-maile rota de callback
+- Autenticação: Supabase com verificação de e-mail e rota de callback
 - Autorização: `requireAdmin` centralizado; admins via `profiles.role='admin'` + fallback `ADMIN_EMAILS` em dev
 - RLS sugerido:
   - Função `public.is_admin()` (SECURITY DEFINER)
@@ -168,7 +168,10 @@ $$;
 - Cobertura atual:
   - Server Actions: categories (create/edit/toggle), nominees (import/create/update/delete/enrich TMDB), bets (confirmBet)
   - Auth helper: requireAdmin
-  - UI: LoginPage e EditCategoryForm (RTL + jsdom)
+  - UI:
+    - LoginPage (RTL + jsdom)
+    - EditCategoryForm (RTL + jsdom)
+    - NomineeItemActions (TMDB/Update/Delete)
 - Mocks principais:
   - Supabase client (encadeável: eq/ilike/neq, count head:true, update/delete thenable, upsert onConflict)
   - `next/cache` (revalidatePath no-op)
@@ -230,28 +233,29 @@ Admin:
 ## 🧭 Mapeamento dos Requisitos para Implementação
 
 1. Registro de Usuário
-   - Implementado: tela de registro, verificação por e-mail, resend com cooldown (30s), feedback visual
-   - Pendente: email ao alterar senha (trilho via Supabase Auth e hooks de update)
+   - Implementado: tela de registro, verificação por e-mail, reenvio com cooldown (30s), feedback visual
+   - Pendente: e-mail automático após alteração de senha
 
 2. Login Seguro
    - Implementado: tela de login com feedback e redirecionamento
-   - Pendente: fluxo “Esqueci minha senha” (link existe; implementar rota e UI)
+   - Pendente: fluxo completo “Esqueci minha senha” (UI presente; ligar ao fluxo)
 
 3. Gestão de Categorias (Admin)
-   - Implementado: listar, criar, validação de duplicados
-   - Pendente: editar, ativar/desativar (toggleCategoryActive), validação adicional
+   - Implementado: listar, criar, editar (nome e número de indicados), ativar/desativar
+   - Validações: duplicidade case-insensitive; limites 1–20
 
 4. Gestão de Indicados (Admin)
-   - Implementado: CRUD, importação em massa
-   - Pendente: integração IMDB
+   - Implementado: CRUD, importação em massa com dedupe e limite por categoria, enriquecimento via TMDB (pôster e dados principais)
+   - Tratamento: impede exclusão com apostas associadas; feedback e revalidação de página
 
 5. Registro de Apostas
-   - Pendente: UI por categoria, seleção de indicado, confirmação e progresso
+   - Implementado (Server Action): upsert por (user_id, category_id), validações de categoria ativa e nominee da categoria
+   - Pendente: UI por categoria (seleção e confirmação), barra de progresso
 
 6. Gestão de Apostas (Usuário)
-   - Pendente: listagem, edição, filtros, status visual
+   - Pendente: listagem, edição, filtros por status
 
-7. Visualização de Apostas de Outros
+7. Visualização de Apostas de Outros Participantes
    - Pendente: ranking detalhado e comparação
 
 8. Registro de Vencedores (Admin)
@@ -263,11 +267,11 @@ Admin:
 10. Interrupção de Apostas (Admin)
    - Pendente: status global (app_settings), notificações e agendamento
 
-11. Homepage
-   - Pendente: dashboard com status do Oscar, estatísticas, pódio e ações rápidas
+11. Homepage do Web App
+   - Pendente: dashboard com status do Oscar, estatísticas e ações rápidas
 
 12. Perfil do Usuário
-   - Pendente: visualização e edição de dados, segurança e notificações
+   - Pendente: visualização/edição; segurança e notificações
 
 ## 🛠️ Tecnologias
 
@@ -320,7 +324,3 @@ Contribuições são bem-vindas! Abra issues e PRs com descrições claras. Prio
 ## 📄 Licença
 
 Nenhuma licença especificada no momento. Recomenda-se adicionar um arquivo LICENSE para clarificar o uso.
-
-## 📄 Licença
-
-Sem licença definida no momento. Recomenda-se adicionar um arquivo LICENSE.
