@@ -41,23 +41,6 @@ export default async function RootLayout({
       <body className={inter.className}>
         <SupabaseProvider>
           <TanstackProvider>
-            {/* Header global */}
-            <header className="border-b bg-white">
-              <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-                <Link href="/home" className="font-semibold">Oscar Betting App</Link>
-                <nav className="flex items-center gap-4">
-                  <Link href="/home" className="text-sm text-gray-700 hover:underline">Home</Link>
-                  <Link href="/bets" className="text-sm text-gray-700 hover:underline">Minhas Apostas</Link>
-                  <Link href="/ranking" className="text-sm text-gray-700 hover:underline">Ranking</Link>
-                  {role === 'admin' && (
-                    <Link href="/admin/settings" className="text-sm text-indigo-700 hover:underline">
-                      Controle de Apostas
-                    </Link>
-                  )}
-                </nav>
-              </div>
-            </header>
-
             {children}
             <Toaster richColors />
           </TanstackProvider>

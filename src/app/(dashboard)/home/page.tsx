@@ -74,38 +74,36 @@ export default async function HomePage() {
     // - Se publicados: vencedores com poster_path
     // - Senão: nominees de alguma categoria ativa com poster_path (limitado)
     let bannerItems: Array<{ name: string; posterUrl: string }> = []
+
     if (resultsPublished) {
         const { data: winners } = await supabase
             .from('nominees')
             .select('name, tmdb_data')
             .eq('is_winner', true)
 
-        bannerItems = (
-            (winners ?? [])
-                .map(w => {
-                    const path = (w as any)?.tmdb_data?.poster_path ?? (w as any)?.tmdb_data?.profile_path
-                    const url = getTmdbImageUrl(path, 'detail')
-                    return url ? { name: w.name, posterUrl: url } : null
-                })
-                .filter(Boolean)
-        as Array<{ name: string; posterUrl: string }>)
+        bannerItems = (winners ?? [])
+            .map(w => {
+                const path = (w as any)?.tmdb_data?.poster_path ?? (w as any)?.tmdb_data?.profile_path
+                const url = getTmdbImageUrl(path, 'detail')
+                return url ? { name: w.name, posterUrl: url } : null
+            })
+            .filter((x): x is { name: string; posterUrl: string } => x !== null)
             .slice(0, 5)
+
     } else {
         const { data: nominees } = await supabase
             .from('nominees')
             .select('name, tmdb_data')
             .limit(12)
 
-        bannerItems = (
-            (nominees ?? [])
-                .map(n => {
-                    const path = (n as any)?.tmdb_data?.poster_path ?? (n as any)?.tmdb_data?.profile_path
-                    const url = getTmdbImageUrl(path, 'detail')
-                    return url ? { name: n.name, posterUrl: url } : null
-                })
-                .filter(Boolean)
-  as Array<{ name: string; posterUrl: string }>)
-    .slice(0, 5)
+        bannerItems = (nominees ?? [])
+            .map(n => {
+                const path = (n as any)?.tmdb_data?.poster_path ?? (n as any)?.tmdb_data?.profile_path
+                const url = getTmdbImageUrl(path, 'detail')
+                return url ? { name: n.name, posterUrl: url } : null
+            })
+            .filter((x): x is { name: string; posterUrl: string } => x !== null)
+            .slice(0, 5)
     }
 
     return (

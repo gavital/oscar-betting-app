@@ -49,13 +49,17 @@ export function Header({ user }: HeaderProps) {
     <header className="bg-white shadow-sm border-b">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
-          <Link href="/" className="text-2xl font-bold text-purple-600">
+          <Link href="/home" className="text-2xl font-bold text-purple-600">
             🏆 Oscar Betting
           </Link>
+          {/* <Link href="/'home'" className="text-sm text-gray-700 hover:underline">Home</Link> */}
 
           <nav className="flex items-center space-x-4">
             {user ? (
               <>
+              <Link href="/home">
+                <Button variant="ghost">Home</Button>
+              </Link>
                 <Link href="/bets">
                   <Button variant="ghost">Minhas Apostas</Button>
                 </Link>
