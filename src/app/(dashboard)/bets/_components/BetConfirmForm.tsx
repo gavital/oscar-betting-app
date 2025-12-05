@@ -63,8 +63,13 @@ export default function BetConfirmForm({
     toast.error('Não foi possível salvar sua aposta', { description: message })
   }, [state, router])
 
+  // Proteção: quando betsOpen=false, não vinculamos a action do formulário
+  const safeFormAction = betsOpen
+    ? formAction
+    : (async () => null) // no-op para garantir que nada é enviado
+
   return (
-    <form action={formAction} className="w-full">
+    <form action={safeFormAction} className="w-full">
       <input type="hidden" name="category_id" value={categoryId} />
       <input type="hidden" name="nominee_id" value={nomineeId} />
 
