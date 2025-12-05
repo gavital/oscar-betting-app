@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { Button } from '@/components/ui/button'
-import BetConfirmForm from '../_components/BetConfirmForm'
+import BetConfirmForm from '@/app/(dashboard)/bets/_components/BetConfirmForm'
 import { getTmdbImageUrl } from '@/lib/tmdb/client'
 
 export default async function BetCategoryPage({
@@ -95,7 +95,7 @@ export default async function BetCategoryPage({
       </div>
 
       <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {(nominees ?? []).map((n) => {
+        {(nominees ?? []).map(n => {
           const posterPath =
             (n as any)?.tmdb_data?.poster_path ??
             (n as any)?.tmdb_data?.profile_path ??

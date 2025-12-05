@@ -21,13 +21,7 @@ export default async function MyBetsPage() {
     setting?.value?.toString?.() === 'true' ||
     setting == null // fallback aberto
 
-  // Categorias ativas
-  const { data: categories, error: catErr } = await supabase
-    .from('categories')
-    .select('id, name, is_active')
-    .eq('is_active', true)
-    .order('name')
-
+    // results_published
   const { data: publishedSetting } = await supabase
     .from('app_settings')
     .select('key, value')
@@ -39,6 +33,13 @@ export default async function MyBetsPage() {
     publishedSetting?.value?.toString?.() === 'true' ||
     false
 
+    // Categorias ativas
+    const { data: categories, error: catErr } = await supabase
+      .from('categories')
+      .select('id, name, is_active')
+      .eq('is_active', true)
+      .order('name')  
+
   if (catErr) {
     return <div className="text-sm text-red-600">Erro ao carregar categorias: {catErr.message}</div>
   }
@@ -48,6 +49,10 @@ export default async function MyBetsPage() {
     .from('bets')
     .select('category_id, nominee_id')
     .eq('user_id', user.id)
+
+    if (betsErr) {
+      return <div className="text-sm text-red-600">Erro ao carregar suas apostas: {betsErr.message}</div>
+    }  
 
   const betByCategory = new Map((bets ?? []).map(b => [b.category_id, b.nominee_id]))
   const total = categories?.length ?? 0

@@ -57,6 +57,7 @@ export default async function HomePage() {
         const { data: profs } = await supabase
             .from('profiles')
             .select('id, name')
+            
         const nameByUser = new Map((profs ?? []).map(p => [p.id, p.name ?? null]))
         const counts = new Map<string, number>()
         for (const b of betsFull ?? []) {
