@@ -111,10 +111,10 @@ describe('UI: /bets/[categoryId] - Aposta por Categoria', () => {
     expect(within(betaCard).getByText(/Sua aposta atual/i)).toBeInTheDocument();
 
     // Botões habilitados
-    const atualizarBtn = within(beta).getByRole('button', { name: /Atualizar Aposta/i });
+    const atualizarBtn = within(betaCard).getByRole('button', { name: /Atualizar Aposta/i });
     expect(atualizarBtn).toBeEnabled();
 
-    const confirmarBtn = within(alpha).getByRole('button', { name: /Confirmar Aposta/i });
+    const confirmarBtn = within(alphaCard).getByRole('button', { name: /Confirmar Aposta/i });
     expect(confirmarBtn).toBeEnabled();
 
     // Integração: clicar em “Confirmar Aposta” deve chamar confirmBet
