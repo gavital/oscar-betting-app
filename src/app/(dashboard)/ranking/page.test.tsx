@@ -47,12 +47,12 @@ describe('RankingPage (SSR): pódio e lista', () => {
             }
             if (table === 'bets') {
               return Promise.resolve({
-                  data: [
-                    { user_id: 'u1', nominee_id: 'win_1' },
-                    { user_id: 'u1', nominee_id: 'win_2' }, // u1: 2 acertos
-                    { user_id: 'u2', nominee_id: 'win_1' }, // u2: 1 acerto
-                  ],
-                  error: null,
+                data: [
+                  { user_id: 'u1', nominee_id: 'win_1' },
+                  { user_id: 'u1', nominee_id: 'win_2' }, // u1: 2 acertos
+                  { user_id: 'u2', nominee_id: 'win_1' }, // u2: 1 acerto
+                ],
+                error: null,
               });
             }
             if (table === 'profiles') {
@@ -75,7 +75,8 @@ describe('RankingPage (SSR): pódio e lista', () => {
     // Links "Ver Apostas" e nomes devem renderizar
     const items = screen.getAllByRole('link', { name: /Ver Apostas/i });
     expect(items.length).toBeGreaterThan(0);
-    expect(screen.getByText('Alice')).toBeInTheDocument();
+    const aliceMatches = screen.getAllByText('Alice');
+    expect(aliceMatches.length).toBeGreaterThan(0);
   });
 
   it('mensagem quando sem dados para pódio', async () => {

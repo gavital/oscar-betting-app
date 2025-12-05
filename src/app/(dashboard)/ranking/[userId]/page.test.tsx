@@ -42,9 +42,13 @@ describe('UserRankingDetailsPage (SSR): acertos/erros por categoria', () => {
             if (table === 'nominees') {
               // winners com eq(), ou lista geral sem eq()
                   if (cols?.includes('tmdb_data')) {
+          // winners: incluir um winner que faça match com a aposta n1 em cat_1
                     return {
                       eq: async (_f: string, _v: any) => ({
-                        data: [{ id: 'n2', category_id: 'cat_2', name: 'Beta', tmdb_data: {} }],
+              data: [
+                { id: 'n1', category_id: 'cat_1', name: 'Alpha', tmdb_data: {} }, // ✅ faz "Acertou" em cat_1
+                { id: 'n2', category_id: 'cat_2', name: 'Beta', tmdb_data: {} },  // winner cat_2 (user apostou n3 → "Errou")
+              ],
                         error: null
                       })
                     }
