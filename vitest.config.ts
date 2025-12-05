@@ -7,10 +7,15 @@ export default defineConfig({
     environment: 'node',
     globals: true,
     include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
-    setupFiles: ['src/tests/setupTests.ts'],
-    coverage: {
-      enabled: false
-    }
+    environmentMatchGlobs: [
+      ['src/**/*.test.tsx', 'jsdom'],
+      testTimeout: 30000,
+      hookTimeout: 30000,
+      setupFiles: ['src/tests/setupTests.ts'],
+      coverage: {
+        enabled: false
+      }
+    ]
   },
   resolve: {
     alias: {
