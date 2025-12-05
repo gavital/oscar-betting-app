@@ -40,7 +40,7 @@ export default function LoginPage() {
         description: 'Login realizado com sucesso.',
       })
       
-      router.push('/')
+      router.push('/home')
       router.refresh()
     } catch (error) {
       toast.error("Erro", {
