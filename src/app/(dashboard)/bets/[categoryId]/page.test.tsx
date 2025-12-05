@@ -2,30 +2,20 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, within, fireEvent, waitFor } from '@testing-library/react';
 
-// Stub SSR global por teste
 let supabaseStub: any;
 
-// Mock SSR do Supabase (a página importa createServerSupabaseClient)
 vi.mock('@/lib/supabase/server', () => ({
   createServerSupabaseClient: async () => supabaseStub,
 }));
-// Mock next/image -> img
 vi.mock('next/image', () => ({
-  default: (props: any) => {
-    // simplificação: renderiza uma tag img com os props mais importantes
-    // evita depender da otimização do next/image em jsdom
-    // eslint-disable-next-line jsx-a11y/alt-text
-    return <img {...props} />;
-  },
+  default: (props: any) => <img {...props} />,
 }));
 
-// Mock confirmBet (Server Action) para validar integração
 const confirmBetMock = vi.fn();
 vi.mock('@/app/(dashboard)/bets/actions', () => ({
   confirmBet: (...args: any[]) => confirmBetMock(...args),
 }));
 
-// Opcional: mock redirect (não é foco destes testes)
 const redirectMock = vi.fn();
 vi.mock('next/navigation', () => ({
   redirect: (...args: any[]) => redirectMock(...args),
@@ -74,14 +64,13 @@ describe('UI: /bets/[categoryId] - Aposta por Categoria', () => {
               };
             }
             if (table === 'bets') {
+              // select('nominee_id').eq('user_id', ...).eq('category_id', ...).maybeSingle()
               return {
-                // await supabase.from('bets').select('nominee_id').eq('user_id', user.id).eq('category_id', categoryId).maybeSingle()
                 eq: (_f1: string, _v1: any) => ({
                   eq: (_f2: string, _v2: any) => ({
                     maybeSingle: async () => ({ data: { nominee_id: 'n2' }, error: null }),
                   }),
                 }),
-              }),
               } as any;
             }
 return { async order() { return { data: [], error: null } } } as any;
@@ -122,7 +111,7 @@ fireEvent.click(confirmarBtn);
 
 await waitFor(() => {
   expect(confirmBetMock).toHaveBeenCalledTimes(1);
-  const arg = confirmBetMock.mock.calls[0]?.[0]; // FormData passado por useActionState
+      const arg = confirmBetMock.mock.calls[0]?.[0];
   expect(arg).toBeInstanceOf(FormData);
   expect(String(arg.get('category_id'))).toBe('cat_1');
   expect(String(arg.get('nominee_id'))).toBe('n1');
@@ -163,12 +152,10 @@ it('desabilita botões quando bets_open=false e exibe “Encerrado”', async ()
           }
           if (table === 'bets') {
             return {
-              select: (_?: string) => ({
                 eq: (_f1: string, _v1: any) => ({
                   eq: (_f2: string, _v2: any) => ({
-                    maybeSingle: async () => ({ data: { nominee_id: 'n2' }, error: null })
-                  })
-                })
+                    maybeSingle: async () => ({ data: { nominee_id: 'n2' }, error: null }),
+                  }),
               }),
             } as any;
           }

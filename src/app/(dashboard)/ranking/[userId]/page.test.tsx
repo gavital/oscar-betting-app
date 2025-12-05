@@ -17,13 +17,19 @@ describe('UserRankingDetailsPage (SSR): acertos/erros por categoria', () => {
     supabaseStub = {
       from(table: string) {
         return {
-          select(_cols?: string) {
+          select(cols?: string) {
             if (table === 'profiles') {
-              return { eq: (_f: string, _v: any) => ({ maybeSingle: async () => ({ data: { id: 'u1', name: 'Alice' }, error: null }) }) } as any;
+              return {
+                eq: (_f: string, _v: any) => ({
+                  maybeSingle: async () => ({
+                    data: { id: 'u1', name: 'Alice' },
+                    error: null
+                  })
+                })
+              } as any;
             }
             if (table === 'bets') {
               return {
-                select: (_?: string) => ({
                   eq: async (_f: string, _v: any) => ({
                     data: [
                       { category_id: 'cat_1', nominee_id: 'n1' },
@@ -31,15 +37,11 @@ describe('UserRankingDetailsPage (SSR): acertos/erros por categoria', () => {
                     ],
                     error: null
                   })
-                })
               } as any;
             }
             if (table === 'nominees') {
-              return {
-                select: (cols?: string) => {
-                  // Quando solicitam 'tmdb_data', é o fetch de winners com eq()
+              // winners com eq(), ou lista geral sem eq()
                   if (cols?.includes('tmdb_data')) {
-                    // winners com eq()
                     return {
                       eq: async (_f: string, _v: any) => ({
                         data: [{ id: 'n2', category_id: 'cat_2', name: 'Beta', tmdb_data: {} }],
@@ -47,7 +49,6 @@ describe('UserRankingDetailsPage (SSR): acertos/erros por categoria', () => {
                       })
                     }
                   }
-                  // lista geral sem eq: retorna diretamente Promise
                   return Promise.resolve({
                     data: [
                       { id: 'n1', category_id: 'cat_1', name: 'Alpha' },
@@ -56,10 +57,14 @@ describe('UserRankingDetailsPage (SSR): acertos/erros por categoria', () => {
                     error: null
                   })
                 }
-              } as any
-            }
             if (table === 'categories') {
-              return { async select() { return { data: [{ id: 'cat_1', name: 'Melhor Filme' }, { id: 'cat_2', name: 'Melhor Direção' }], error: null } } } as any;
+              return Promise.resolve({
+                data: [
+                  { id: 'cat_1', name: 'Melhor Filme' },
+                  { id: 'cat_2', name: 'Melhor Direção' }
+                ],
+                error: null
+              })
             }
             return { async order() { return { data: [], error: null } } } as any;
           },
@@ -72,7 +77,6 @@ describe('UserRankingDetailsPage (SSR): acertos/erros por categoria', () => {
 
     expect(screen.getByText(/Alice/i)).toBeInTheDocument();
     expect(screen.getByText(/Pontuação:/i)).toBeInTheDocument();
-    // Exibe “Acertou/Errou”
     expect(screen.getByText(/Acertou/i)).toBeInTheDocument();
     expect(screen.getByText(/Errou/i)).toBeInTheDocument();
   });

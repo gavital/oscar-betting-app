@@ -34,19 +34,11 @@ describe('HomePage (SSR): status, estatísticas e banner', () => {
               } as any
             }
             if (table === 'profiles') {
-              return {
                 // await supabase.from('profiles').select('id')
-                async select() {
-                  return { data: [{ id: 'u1' }, { id: 'u2' }], error: null }
-                }
-              } as any
+              return Promise.resolve({ data: [{ id: 'u1' }, { id: 'u2' }], error: null })
             }
             if (table === 'bets') {
-              return {
-                async select() {
-                  return { data: [{ id: 'b1' }], error: null }
-                }
-              } as any
+              return Promise.resolve({ data: [{ id: 'b1' }], error: null })
             }
             if (table === 'categories') {
               // await supabase.from('categories').select('id, name').eq('is_active', true)
@@ -105,18 +97,18 @@ describe('HomePage (SSR): status, estatísticas e banner', () => {
               } as any
             }
             if (table === 'bets') {
-              return {
-                async select() {
-                  return { data: [{ user_id: 'u1', nominee_id: 'win_1' }], error: null }
-                }
-              } as any
+              // await supabase.from('bets').select('user_id, nominee_id')
+              return Promise.resolve({
+                data: [{ user_id: 'u1', nominee_id: 'win_1' }],
+                error: null
+              })
             }
             if (table === 'profiles') {
-              return {
-                async select() {
-                  return { data: [{ id: 'u1', name: 'Alice' }], error: null }
-                }
-              } as any
+              // await supabase.from('profiles').select('id, name')
+              return Promise.resolve({
+                data: [{ id: 'u1', name: 'Alice' }],
+                error: null
+              })
             }
             return { async order() { return { data: [], error: null } } } as any
           }
