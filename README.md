@@ -161,6 +161,48 @@ AS $$
   );
 $$;
 ```
+ 
+## 📣 Publicação de Resultados (results_published)
+
+Para controlar a visibilidade pública do Ranking (pódio e detalhes por participante) após o registro dos vencedores, o sistema usa a chave `results_published` em `app_settings`:
+
+- Quando `results_published = true`:
+  - A página `/ranking` exibe pódio e lista completa de participantes com suas pontuações (acertos/total)
+  - A página `/ranking/[userId]` exibe detalhes por categoria com “Acertou/Errou”
+  - A página `/bets` (Minhas Apostas) exibe o badge “RESULTADOS PUBLICADOS”
+
+- Quando `results_published = false`:
+  - A página `/ranking` exibe uma mensagem informando que os resultados ainda não foram publicados e oculta pódio/lista
+  - `/bets` não exibe o badge de resultados
+
+### Como publicar/ocultar resultados via UI (Admin)
+
+1. Acesse `/admin/settings` (somente admins)
+2. No bloco “Publicação dos resultados”:
+   - Clique em “Publicar Resultados” para tornar o ranking visível publicamente
+   - Clique em “Ocultar Resultados” para ocultar o ranking (apenas admins poderão visualizar conforme policies)
+3. A página confere o estado atual e exibe um badge:
+   - “RESULTADOS PUBLICADOS” quando ativo
+   - “RESULTADOS OCULTOS” quando desativado
+
+### Integração Técnica
+
+- Server Action: `setResultsPublished(formData)` em `src/app/(dashboard)/admin/settings/actions.ts`
+  - Upsert em `app_settings` com `key='results_published'` e `value=true|false` (jsonb)
+  - Revalida as rotas `/ranking`, `/ranking/[userId]` e `/bets` para refletir a atualização
+- UI Client: `SettingsResultsForm` em `src/app/(dashboard)/admin/settings/_components/SettingsResultsForm.tsx`
+  - Usa `useActionState` + toasts (sonner)
+  - Exibe “Publicar Resultados” / “Ocultar Resultados” e estado “Salvando...” durante a ação
+
+### RLS (opcional recomendado)
+
+Para liberar leitura pública de `bets` apenas quando `results_published=true`, você pode criar uma policy RLS:
+- Policy de SELECT em `bets`:
+  - Permite leitura quando `public.is_admin()` for true
+  - Ou quando existir uma linha em `app_settings` com `key='results_published'` e `value=true` (jsonb)
+- Essa policy complementa o gating de UI e reforça a privacidade em nível de banco
+
+> Observação: normalize o tipo de `app_settings.value` para `jsonb` boolean (`true`/`false`) nas chaves booleanas (ex.: `results_published`, `bets_open`), evitando comparações com texto.
 
 ## 🧪 Testes
 
