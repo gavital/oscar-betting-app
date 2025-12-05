@@ -36,7 +36,7 @@ describe('UI: /bets/[categoryId] - Aposta por Categoria', () => {
   pushMock.mockReset();
   refreshMock.mockReset();
     redirectMock.mockReset();
-    // manter resets de confirmBetMock etc.
+    confirmBetMock.mockReset(); // ✅ adiciona este reset
   });
 
   it('renderiza cards com pôster TMDB, marca “Sua aposta atual” e habilita botões quando bets_open=true', async () => {
