@@ -22,9 +22,11 @@ describe('RankingPage (SSR): pódio e lista', () => {
               return { eq: async () => ({ data: [{ id: 'cat_1' }, { id: 'cat_2' }], error: null }) } as any;
             }
             if (table === 'nominees') {
-              return { eq: (_f: string, _v: any) => ({
-                select: async () => ({ data: [{ id: 'win_1' }, { id: 'win_2' }], error: null })
-              }) } as any;
+              return {
+                eq: (_f: string, _v: any) => ({
+                  select: async () => ({ data: [{ id: 'win_1' }, { id: 'win_2' }], error: null })
+                })
+              } as any;
             }
             if (table === 'bets') {
               return {
@@ -75,5 +77,29 @@ describe('RankingPage (SSR): pódio e lista', () => {
     render(await Page());
 
     expect(screen.getByText(/Sem dados para o pódio/i)).toBeInTheDocument();
+  });
+
+  it('quando results_published=false, exibe mensagem de não publicado e oculta pódio/lista', async () => {
+    supabaseStub = {
+      from(table: string) {
+        return {
+          select(_cols?: string) {
+            if (table === 'app_settings') {
+              return { eq: async () => ({ data: { key: 'results_published', value: false }, error: null }) } as any;
+            }
+            if (table === 'categories') {
+              return { eq: async () => ({ data: [{ id: 'cat_1' }], error: null }) } as any;
+            }
+            return { async select() { return { data: [], error: null } } } as any;
+          },
+        };
+      },
+    };
+
+    const Page = (await import('./page')).default;
+    render(await Page());
+
+    expect(screen.getByText(/Resultados ainda não publicados/i)).toBeInTheDocument();
+    expect(screen.queryByText(/1º lugar/i)).not.toBeInTheDocument();
   });
 });
