@@ -4,8 +4,11 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { UserCircle } from 'lucide-react'
 import { useSupabase } from '@/providers/SupabaseProvider'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
+
+const pathname = usePathname()
+const isActive = (href: string) => pathname?.startsWith(href)
 
 interface HeaderProps {
   user: any | null
@@ -25,20 +28,30 @@ export function Header({ user }: HeaderProps) {
   const [profile, setProfile] = useState<Profile | null>(null)
 
   useEffect(() => {
-    if (user) {
-      // Busca o profile do usuário
-      supabase
+    let mounted = true
+    async function loadProfile() {
+      if (!user) {
+        setProfile(null)
+        return
+      }
+      const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', user.id)
         .single()
-        .then(({ data, error }) => {
-          if (data && !error) {
-            setProfile(data)
-          }
-        })
+      if (mounted) {
+        if (error) {
+          // opcional: log para observabilidade
+          console.warn('[Header] failed to load profile', error.message)
+          setProfile(null)
+        } else {
+          setProfile(data as Profile)
+        }
+      }
     }
-  }, [user])
+    loadProfile()
+    return () => { mounted = false }
+  }, [user, supabase])
 
   const handleSignOut = async () => {
     await supabase.auth.signOut()
@@ -57,14 +70,14 @@ export function Header({ user }: HeaderProps) {
           <nav className="flex items-center space-x-4">
             {user ? (
               <>
-              <Link href="/home">
-                <Button variant="ghost">Home</Button>
-              </Link>
-                <Link href="/bets">
-                  <Button variant="ghost">Minhas Apostas</Button>
+                <Link href="/home" aria-label="Home">
+                  <Button variant={isActive('/home') ? 'default' : 'ghost'}>Home</Button>
                 </Link>
-                <Link href="/ranking">
-                  <Button variant="ghost">Ranking</Button>
+                <Link href="/bets" aria-label="Minhas Apostas">
+                  <Button variant={isActive('/bets') ? 'default' : 'ghost'}>Minhas Apostas</Button>
+                </Link>
+                <Link href="/ranking" aria-label="Ranking">
+                  <Button variant={isActive('/ranking') ? 'default' : 'ghost'}>Ranking</Button>
                 </Link>
 
                 {profile?.role === 'admin' && (
