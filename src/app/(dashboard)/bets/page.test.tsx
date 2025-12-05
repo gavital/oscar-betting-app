@@ -39,7 +39,6 @@ describe('UI: /bets - Minhas Apostas', () => {
                 })
               } as any
             }
-
             // categorias ativas
             if (table === 'categories') {
               return {
