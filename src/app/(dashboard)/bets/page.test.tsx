@@ -56,9 +56,11 @@ describe('UI: /bets - Minhas Apostas', () => {
             // bets do usuário
             if (table === 'bets') {
               return {
-                eq: (_f1: string, _v1: any) => async () => ({
-                  data: [{ category_id: 'cat_1', nominee_id: 'n1' }], // apenas cat_1 apostada
-                  error: null,
+                select: (_?: string) => ({
+                  eq: (_f1: string, _v1: any) => Promise.resolve({
+                    data: [{ category_id: 'cat_1', nominee_id: 'n1' }], // apenas cat_1 apostada
+                    error: null,
+                  }),
                 }),
               } as any;
             }

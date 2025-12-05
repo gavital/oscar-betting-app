@@ -36,14 +36,26 @@ describe('UserRankingDetailsPage (SSR): acertos/erros por categoria', () => {
             }
             if (table === 'nominees') {
               return {
-                select: async () => ({
-                  data: [
-                    { id: 'n1', category_id: 'cat_1', name: 'Alpha' },
-                    { id: 'n2', category_id: 'cat_2', name: 'Beta', is_winner: true }
-                  ],
-                  error: null
-                })
-              } as any;
+                select: (cols?: string) => {
+                  // Quando solicitam 'tmdb_data', é o fetch de winners com eq()
+                  if (cols?.includes('tmdb_data')) {
+                    return {
+                      eq: (_f: string, _v: any) => Promise.resolve({
+                        data: [{ id: 'n2', category_id: 'cat_2', name: 'Beta', tmdb_data: {} }],
+                        error: null
+                      })
+                    }
+                  }
+                  // Caso sem tmdb_data, é o fetch de todos os nominees (await direto no select)
+                  return Promise.resolve({
+                    data: [
+                      { id: 'n1', category_id: 'cat_1', name: 'Alpha' },
+                      { id: 'n2', category_id: 'cat_2', name: 'Beta' },
+                    ],
+                    error: null
+                  })
+                }
+              } as any
             }
             if (table === 'categories') {
               return { async select() { return { data: [{ id: 'cat_1', name: 'Melhor Filme' }, { id: 'cat_2', name: 'Melhor Direção' }], error: null } } } as any;

@@ -94,7 +94,10 @@ describe('LoginPage (UI)', () => {
 
     render(<LoginPage />)
     const submit = screen.getByRole('button', { name: /Entrar/i })
-    fireEvent.submit(submit.closest('form')!)
+
+    await act(async () => {
+      fireEvent.submit(submit.closest('form')!)
+    })
     await Promise.resolve()
 
     expect(hoisted.toastError).toHaveBeenCalled()

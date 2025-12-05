@@ -26,7 +26,7 @@ describe('RankingPage (SSR): pódio e lista', () => {
             }
             if (table === 'nominees') {
               return {
-                select: (_?: string) => ({
+                select: (_?: string) => Promise.resolve({
                   eq: async (_f: string, _v: any) => ({ data: [{ id: 'win_1' }, { id: 'win_2' }], error: null })
                 })
               } as any;
@@ -82,7 +82,10 @@ describe('RankingPage (SSR): pódio e lista', () => {
             if (table === 'nominees') {
               return {
                 select: (_?: string) => ({
-                  eq: async (_f: string, _v: any) => ({ data: [], error: null })
+                  eq: (_f: string, _v: any) => Promise.resolve({
+                    data: [{ id: 'win_1' }, { id: 'win_2' }],
+                    error: null
+                  })
                 })
               } as any;
             }

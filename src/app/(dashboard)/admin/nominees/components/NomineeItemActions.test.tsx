@@ -1,5 +1,6 @@
 // src/app/(dashboard)/admin/nominees/components/NomineeItemActions.test.tsx
 // @vitest-environment jsdom
+import { act } from 'react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, within } from '@testing-library/react'
 import { NomineeItemActions } from './NomineeItemActions'
@@ -69,7 +70,9 @@ describe('NomineeItemActions (UI)', () => {
     render(<NomineeItemActions nominee={nominee} categoryId={categoryId} />)
     const form = screen.getByTestId('delete-form')
 
-    fireEvent.submit(form)
+    await act(async () => {
+      fireEvent.submit(form)
+    })
     await Promise.resolve()
 
     expect(deleteMock).toHaveBeenCalledTimes(1)

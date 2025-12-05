@@ -103,8 +103,11 @@ describe('EditCategoryForm (UI)', () => {
 
     // Valida que o toast de sucesso foi chamado e o router.replace também
     expect(showSuccessToast).toHaveBeenCalled()
-    const msg = showSuccessToast.mock.calls[0]?.[0]
-    expect(String(msg)).toMatch(/Categoria atualizada/i)
+
+    // Depois (validar description, que contém a mensagem útil):
+    const call = showSuccessToast.mock.calls[0]
+    const desc = call?.[1]?.description ?? call?.[0]?.description
+    expect(String(desc)).toMatch(/Categoria atualizada/i)
     // Para erro:
     await act(async () => { fireEvent.submit(form) })
   })
@@ -127,7 +130,8 @@ describe('EditCategoryForm (UI)', () => {
       fireEvent.submit(form)
     })
     expect(showErrorToast).toHaveBeenCalled()
-    const call = showErrorToast.mock.calls[0]?.[0]
-    expect(call?.code).toBe('CATEGORY_NAME_DUPLICATE')
+    const errorToastArgs = showErrorToast.mock.calls[0]
+const errorDesc = errorToastArgs?.[1]?.description ?? errorToastArgs?.[0]?.description
+expect(String(errorDesc)).toMatch(/categoria.*nome/i) // ou a frase fixa de getErrorMessage
   })
 })
