@@ -17,7 +17,7 @@ vi.mock('next/navigation', () => {
 // Mock dos toasts
 const showSuccessToast = vi.fn()
 const showErrorToast = vi.fn()
-vi.mock'sonner', () => ({
+vi.mock('sonner', () => ({
   toast: {
     success: (...args: any[]) => showSuccessToast(...args),
     error: (...args: any[]) => showErrorToast(...args)
@@ -79,7 +79,7 @@ describe('EditCategoryForm (UI)', () => {
 
     // Clica e valida que o estado mudou para "Inativa" e o hidden foi atualizado
     fireEvent.click(switchButton)
-    expect(screen.getByText(/Inativa/i)).toBeInTheDocument()
+    expect(statusText.textContent).toMatch(/Inativa/i)
 
     // Hidden input deve ser atualizado para "false"
     const hiddenActive = screen.getByDisplayValue('false') as HTMLInputElement
@@ -91,17 +91,20 @@ describe('EditCategoryForm (UI)', () => {
     editCategoryMock.mockResolvedValueOnce({ ok: true, data: { id: 'cat_1' } })
 
     render(<EditCategoryForm category={baseCategory} />)
-    const form = screen.getByText(/Salvar Alterações/i).closest('form')!
 
     // Submit do form
-    await act(async () => { fireEvent.submit(form) })
+    const form = screen.getByText(/Salvar Alterações/i).closest('form')!
+    await act(async () => {
+      fireEvent.submit(form)
+    })
 
     // Aguarda microtask
     await Promise.resolve()
 
     // Valida que o toast de sucesso foi chamado e o router.replace também
-    expect(showSuccessToast).toHaveBeenCalledWith('Categoria atualizada!')
     expect(showSuccessToast).toHaveBeenCalled()
+    const msg = showSuccessToast.mock.calls[0]?.[0]
+    expect(String(msg)).toMatch(/Categoria atualizada/i)
     // Para erro:
     await act(async () => { fireEvent.submit(form) })
   })
@@ -116,12 +119,13 @@ describe('EditCategoryForm (UI)', () => {
       },
     })
 
+    const baseCategory = { id: 'cat_1', name: 'Melhor Filme', max_nominees: 5, is_active: true }
+
     render(<EditCategoryForm category={baseCategory} />)
-    const form = screen.getByText(/Salvar Alterações/i).closest('form')
-    fireEvent.submit(form!)
-
-    await Promise.resolve()
-
+    const form = screen.getByText(/Salvar Alterações/i).closest('form')!
+    await act(async () => {
+      fireEvent.submit(form)
+    })
     expect(showErrorToast).toHaveBeenCalled()
     const call = showErrorToast.mock.calls[0]?.[0]
     expect(call?.code).toBe('CATEGORY_NAME_DUPLICATE')

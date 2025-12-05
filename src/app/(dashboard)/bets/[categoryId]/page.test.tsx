@@ -166,9 +166,9 @@ describe('UI: /bets/[categoryId] - Aposta por Categoria', () => {
                 select: (_?: string) => ({
                   eq: (_f1: string, _v1: any) => ({
                     eq: (_f2: string, _v2: any) => ({
-                      maybeSingle: async () => ({ data: null, error: null }),
-                    }),
-                  }),
+                      maybeSingle: async () => ({ data: { nominee_id: 'n2' }, error: null })
+                    })
+                  })
                 }),
               } as any;
             }
