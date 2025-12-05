@@ -9,13 +9,13 @@ export default defineConfig({
     include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
     environmentMatchGlobs: [
       ['src/**/*.test.tsx', 'jsdom'],
-      testTimeout: 30000,
-      hookTimeout: 30000,
-      setupFiles: ['src/tests/setupTests.ts'],
-      coverage: {
-        enabled: false
-      }
-    ]
+    ],
+    testTimeout: 30000,
+    hookTimeout: 30000,
+    setupFiles: ['src/tests/setupTests.ts'],
+    coverage: {
+      enabled: false
+    }
   },
   resolve: {
     alias: {
