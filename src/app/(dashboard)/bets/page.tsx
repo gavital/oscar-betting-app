@@ -28,6 +28,17 @@ export default async function MyBetsPage() {
     .eq('is_active', true)
     .order('name')
 
+  const { data: publishedSetting } = await supabase
+    .from('app_settings')
+    .select('key, value')
+    .eq('key', 'results_published')
+    .maybeSingle()
+  const resultsPublished =
+    publishedSetting?.value === true ||
+    publishedSetting?.value === 'true' ||
+    publishedSetting?.value?.toString?.() === 'true' ||
+    false
+
   if (catErr) {
     return <div className="text-sm text-red-600">Erro ao carregar categorias: {catErr.message}</div>
   }
@@ -61,8 +72,14 @@ export default async function MyBetsPage() {
               APOSTAS FECHADAS
             </span>
           )}
+          {' '}
+          {resultsPublished && (
+            <span className="inline-flex items-center text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded">
+              RESULTADOS PUBLICADOS
+            </span>
+          )}
         </div>
-        {/* Você pode substituir por um componente de Progress caso use uma lib de UI */}
+        {/* Progress bar */}
         <div className="w-full bg-gray-200 h-2 rounded mt-2">
           <div className="bg-blue-600 h-2 rounded" style={{ width: `${progressPct}%` }} />
         </div>

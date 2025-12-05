@@ -11,6 +11,19 @@ type UserScore = {
 export default async function RankingPage() {
   const supabase = await createServerSupabaseClient()
 
+  // Estado de publicação
+  const { data: publishedSetting } = await supabase
+    .from('app_settings')
+    .select('key, value')
+    .eq('key', 'results_published')
+    .maybeSingle()
+
+  const resultsPublished =
+    publishedSetting?.value === true ||
+    publishedSetting?.value === 'true' ||
+    publishedSetting?.value?.toString?.() === 'true' ||
+    false
+
   // Total de categorias ativas para mostrar "acertos/total"
   const { data: categories } = await supabase
     .from('categories')
@@ -18,6 +31,28 @@ export default async function RankingPage() {
     .eq('is_active', true)
   const total = categories?.length ?? 0
 
+  if (!resultsPublished) {
+    return (
+      <div className="space-y-6">
+        <div className="border-b pb-4">
+          <h1 className="text-2xl font-bold">Ranking</h1>
+          <p className="text-sm text-gray-600">
+            Resultados ainda não publicados.
+          </p>
+        </div>
+
+        <div className="p-4 border rounded bg-yellow-50 text-yellow-800 text-sm">
+          O ranking ficará disponível após a publicação dos resultados oficiais. Enquanto isso, você pode continuar fazendo suas apostas.
+        </div>
+
+        <Link href="/bets" className="inline-block text-sm text-indigo-600 hover:underline">
+          Ir para Minhas Apostas
+        </Link>
+      </div>
+    )
+  }
+
+  // winners e bets publicados
   // Aggregate: contar bets onde nominee.is_winner = true, por usuário
   // Nota: Supabase pode não suportar join direto sem RPC; vamos fazer 2 leituras e agregar em memória
   const { data: winners } = await supabase
@@ -33,7 +68,7 @@ export default async function RankingPage() {
 
   const { data: profiles } = await supabase
     .from('profiles')
-    .select('id, name') // email pode ser exposto via auth.users; mantemos name aqui
+    .select('id, name')
 
   const nameByUser = new Map((profiles ?? []).map(p => [p.id, p.name ?? null]))
 
@@ -60,6 +95,11 @@ export default async function RankingPage() {
         <p className="text-sm text-gray-600">
           Total de categorias consideradas: {total}
         </p>
+        <div className="mt-2">
+          <span className="inline-flex items-center text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded">
+            RESULTADOS PUBLICADOS
+          </span>
+        </div>
       </div>
 
       {/* Pódio */}
