@@ -39,8 +39,8 @@ describe('LoginPage (UI)', () => {
     pushMock.mockReset()
     refreshMock.mockReset()
     signInWithPasswordMock.mockReset()
-    toastSuccess.mockReset()
-    toastError.mockReset()
+    hoisted.toastSuccess.mockReset()
+    hoisted.toastError.mockReset()
   })
 
   it('desabilita o botão enquanto loading e reabilita após tentativa', async () => {

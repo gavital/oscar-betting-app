@@ -26,8 +26,8 @@ describe('RankingPage (SSR): pódio e lista', () => {
             }
             if (table === 'nominees') {
               return {
-                eq: (_f: string, _v: any) => ({
-                  select: async () => ({ data: [{ id: 'win_1' }, { id: 'win_2' }], error: null })
+                select: (_?: string) => ({
+                  eq: async (_f: string, _v: any) => ({ data: [{ id: 'win_1' }, { id: 'win_2' }], error: null })
                 })
               } as any;
             }
@@ -70,8 +70,12 @@ describe('RankingPage (SSR): pódio e lista', () => {
     supabaseStub = {
       from(table: string) {
         return {
-          select: async () => ({ data: [], error: null }),
-          eq: async () => ({ data: [], error: null }),
+          select(_cols?: string) {
+            if (table === 'app_settings') {
+              return { eq: (_f: string, _v: any) => ({ maybeSingle: async () => ({ data: { key: 'results_published', value: true }, error: null }) }) } as any;
+            }
+            return { async select() { return { data: [], error: null } } } as any
+          },
         };
       },
     };

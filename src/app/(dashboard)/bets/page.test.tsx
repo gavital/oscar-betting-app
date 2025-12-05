@@ -31,6 +31,15 @@ describe('UI: /bets - Minhas Apostas', () => {
       from(table: string) {
         return {
           select: function (_cols?: string) {
+            // app_settings: bets_open true
+            if (table === 'app_settings') {
+              return {
+                eq: (_f: string, _v: any) => ({
+                  maybeSingle: async () => ({ data: { key: 'bets_open', value: true }, error: null })
+                })
+              } as any
+            }
+
             // categorias ativas
             if (table === 'categories') {
               return {
@@ -89,4 +98,5 @@ describe('UI: /bets - Minhas Apostas', () => {
     const Page = (await import('./page')).default;
     await expect(Page()).rejects.toThrow(/REDIRECT:\/login/);
     expect(redirectMock).toHaveBeenCalledWith('/login');
-});
+  })
+})

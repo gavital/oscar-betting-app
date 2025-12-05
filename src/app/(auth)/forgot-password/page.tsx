@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { sendResetEmail } from './actions';
+import { sendResetEmail } from '@/app/(auth)/forgot/actions';
 
 type ForgotState =
   | { ok: true }

@@ -62,7 +62,7 @@ describe('EditCategoryForm (UI)', () => {
     // Buscamos pelo texto "Ativa"/"Inativa" como fallback
     const statusText = screen.getByText(/Ativa/i)
     // O switch é o primeiro botão próximo ao texto; buscamos por role button
-    const switchButton = screen.getByRole('button')
+    const switchButton = screen.getByRole('switch')
 
     // Clica e valida que o estado mudou para "Inativa" e o hidden foi atualizado
     fireEvent.click(switchButton)
@@ -78,10 +78,10 @@ describe('EditCategoryForm (UI)', () => {
     editCategoryMock.mockResolvedValueOnce({ ok: true, data: { id: 'cat_1' } })
 
     render(<EditCategoryForm category={baseCategory} />)
-    const form = screen.getByRole('form') || screen.getByTestId('form') || screen.getByText(/Salvar Alterações/i).closest('form')
+    const form = screen.getByText(/Salvar Alterações/i).closest('form')!
 
     // Submit do form
-    fireEvent.submit(form!)
+    fireEvent.submit(form)
 
     // Aguarda microtask
     await Promise.resolve()
