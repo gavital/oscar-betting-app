@@ -13,7 +13,7 @@ vi.mock('@/lib/supabase/server', () => ({
 // Mock de next/navigation (se redirect for chamado, queremos ver a intenção)
 const redirectMock = vi.fn();
 vi.mock('next/navigation', () => ({
-  redirect: (...args: any[]) => redirectMock(...args),
+  redirect: (url: string) => { redirectMock(url); throw new Error(`REDIRECT:${url}`); },
 }));
 
 describe('UI: /bets - Minhas Apostas', () => {
@@ -83,11 +83,10 @@ describe('UI: /bets - Minhas Apostas', () => {
   it('redireciona para /login quando não autenticado', async () => {
     supabaseStub = {
       auth: { getUser: async () => ({ data: { user: null } }) },
+      from() { return { select: () => ({}) } } // evita 'from is not a function' se continuar a execução
     } as any;
 
     const Page = (await import('./page')).default;
-    await Page(); // chamada que tentará renderizar e chamará redirect('/login')
-
+    await expect(Page()).rejects.toThrow(/REDIRECT:\/login/);
     expect(redirectMock).toHaveBeenCalledWith('/login');
-  });
 });

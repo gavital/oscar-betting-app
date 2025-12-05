@@ -12,6 +12,7 @@ vi.mock('@/lib/supabase/server', () => ({
 const redirectMock = vi.fn()
 vi.mock('next/navigation', () => ({
   redirect: (...args: any[]) => redirectMock(...args),
+  useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
 }))
 
 describe('AdminSettingsPage (SSR): exibe estado atual de bets_open', () => {
@@ -62,15 +63,15 @@ describe('AdminSettingsPage (SSR): exibe estado atual de bets_open', () => {
               return {
                 eq: (_f: string, _v: any) => ({
                   maybeSingle: async () => ({ data: { role: 'admin' }, error: null })
-                }),
-              }
+                })
+              } as any
             }
             if (table === 'app_settings') {
               return {
                 eq: (_f: string, _v: any) => ({
                   maybeSingle: async () => ({ data: { key: 'bets_open', value: false }, error: null })
                 })
-              }
+              } as any
             }
             return { async order() { return { data: [], error: null } } } as any
           }

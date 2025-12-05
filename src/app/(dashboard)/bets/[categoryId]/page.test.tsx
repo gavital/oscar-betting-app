@@ -84,7 +84,7 @@ describe('UI: /bets/[categoryId] - Aposta por Categoria', () => {
                 }),
               } as any;
             }
-            return { async order() { return { data: [], error: null }; } } as any;
+            return { async order() { return { data: [], error: null } } } as any;
           },
         };
       },
@@ -100,7 +100,7 @@ describe('UI: /bets/[categoryId] - Aposta por Categoria', () => {
     expect(screen.getByText('Melhor Filme')).toBeInTheDocument();
     expect(screen.getByText(/Apostas abertas/i)).toBeInTheDocument();
 
-    // Imagens (next/image -> img) com src contendo /w185/ (getTmdbImageUrl monta URL de lista)
+    // Nominees renderizados com pôsteres (src contendo /w185/)
     const alphaCard = screen.getByText('Alpha').closest('li')!;
     const betaCard = screen.getByText('Beta').closest('li')!;
 
@@ -110,7 +110,7 @@ describe('UI: /bets/[categoryId] - Aposta por Categoria', () => {
     // "Sua aposta atual" marcada para n2
     expect(within(betaCard).getByText(/Sua aposta atual/i)).toBeInTheDocument();
 
-    // Botões habilitados
+    // Botões devem estar habilitados
     const atualizarBtn = within(betaCard).getByRole('button', { name: /Atualizar Aposta/i });
     expect(atualizarBtn).toBeEnabled();
 
@@ -172,7 +172,7 @@ describe('UI: /bets/[categoryId] - Aposta por Categoria', () => {
                 }),
               } as any;
             }
-            return { async order() { return { data: [], error: null }; } } as any;
+            return { async order() { return { data: [], error: null } } } as any;
           },
         };
       },

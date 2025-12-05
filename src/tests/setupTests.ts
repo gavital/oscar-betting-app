@@ -14,6 +14,16 @@ if (!(globalThis as any).fetch) {
   vi.stubGlobal('fetch', vi.fn()); // stub básico; os testes sobrescrevem com mockResolvedValueOnce
 }
 
+// Stub de ResizeObserver para componentes que usam Radix/shadcn
+if (!(globalThis as any).ResizeObserver) {
+  class ResizeObserver {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  }
+  ;(globalThis as any).ResizeObserver = ResizeObserver as any
+}
+
 // Variáveis de ambiente padrão
 process.env.ADMIN_EMAILS = process.env.ADMIN_EMAILS || 'admin@example.com';
 process.env.NEXT_PUBLIC_SUPABASE_URL =

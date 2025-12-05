@@ -25,7 +25,7 @@ describe('HomePage (SSR): status, estatísticas e banner', () => {
               return {
                 eq: (key: string, value: any) => ({
                   maybeSingle: async () => ({
-                    data: key === 'key' && value === 'bets_open'
+                    data: value === 'bets_open'
                       ? { key: 'bets_open', value: true }
                       : { key: 'results_published', value: false },
                     error: null
@@ -36,7 +36,11 @@ describe('HomePage (SSR): status, estatísticas e banner', () => {
             if (table === 'profiles') return { async select() { return { data: [{ id: 'u1' }, { id: 'u2' }], error: null } } } as any
             if (table === 'bets') return { async select() { return { data: [{ id: 'b1' }], error: null } } } as any
             if (table === 'categories') return { eq: async () => ({ data: [{ id: 'cat_1' }, { id: 'cat_2' }], error: null }) } as any
-            if (table === 'nominees') return { async select() { return { data: [], error: null } } } as any
+            if (table === 'nominees') return {
+              select: (_?: string) => ({
+                limit: async (_n: number) => ({ data: [], error: null })
+              })
+            } as any
             return { async order() { return { data: [], error: null } } } as any
           }
         }
@@ -62,9 +66,9 @@ describe('HomePage (SSR): status, estatísticas e banner', () => {
           select(_cols?: string) {
             if (table === 'app_settings') {
               return {
-                eq: (key: string, value: any) => ({
+                eq: (_f: string, _v: any) => ({
                   maybeSingle: async () => ({
-                    data: { key: value, value: value === 'results_published' ? true : true },
+                    data: { key: 'results_published', value: true },
                     error: null
                   })
                 })

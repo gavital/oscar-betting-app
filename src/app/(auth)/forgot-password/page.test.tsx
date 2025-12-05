@@ -3,10 +3,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import ForgotPasswordPage from './page';
 
-vi.mock('./actions', () => ({
+vi.mock('@/app/(auth)/forgot/actions', () => ({
   sendResetEmail: vi.fn(),
-}));
-import { sendResetEmail } from './actions';
+}))
+import { sendResetEmail } from '@/app/(auth)/forgot/actions';
 
 const pushMock = vi.fn();
 vi.mock('next/navigation', () => ({

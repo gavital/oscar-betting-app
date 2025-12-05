@@ -22,10 +22,28 @@ describe('UserRankingDetailsPage (SSR): acertos/erros por categoria', () => {
               return { eq: (_f: string, _v: any) => ({ maybeSingle: async () => ({ data: { id: 'u1', name: 'Alice' }, error: null }) }) } as any;
             }
             if (table === 'bets') {
-              return { select: (_?: string) => ({ eq: (_f: string, _v: any) => ({ async select() { return { data: [{ category_id: 'cat_1', nominee_id: 'n1' }, { category_id: 'cat_2', nominee_id: 'n3' }], error: null } } }) }) } as any;
+              return {
+                select: (_?: string) => ({
+                  eq: async (_f: string, _v: any) => ({
+                    data: [
+                      { category_id: 'cat_1', nominee_id: 'n1' },
+                      { category_id: 'cat_2', nominee_id: 'n3' }
+                    ],
+                    error: null
+                  })
+                })
+              } as any;
             }
             if (table === 'nominees') {
-              return { eq: (_f: string, _v: any) => ({ async select() { return { data: [{ id: 'n1', category_id: 'cat_1', name: 'Alpha' }, { id: 'n2', category_id: 'cat_2', name: 'Beta', is_winner: true }], error: null } } }) } as any;
+              return {
+                select: async () => ({
+                  data: [
+                    { id: 'n1', category_id: 'cat_1', name: 'Alpha' },
+                    { id: 'n2', category_id: 'cat_2', name: 'Beta', is_winner: true }
+                  ],
+                  error: null
+                })
+              } as any;
             }
             if (table === 'categories') {
               return { async select() { return { data: [{ id: 'cat_1', name: 'Melhor Filme' }, { id: 'cat_2', name: 'Melhor Direção' }], error: null } } } as any;

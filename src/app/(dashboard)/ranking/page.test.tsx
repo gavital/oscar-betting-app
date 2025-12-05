@@ -18,6 +18,9 @@ describe('RankingPage (SSR): pódio e lista', () => {
       from(table: string) {
         return {
           select(_cols?: string) {
+            if (table === 'app_settings') {
+              return { eq: (_f: string, _v: any) => ({ maybeSingle: async () => ({ data: { key: 'results_published', value: true }, error: null }) }) } as any;
+            }
             if (table === 'categories') {
               return { eq: async () => ({ data: [{ id: 'cat_1' }, { id: 'cat_2' }], error: null }) } as any;
             }
@@ -85,12 +88,12 @@ describe('RankingPage (SSR): pódio e lista', () => {
         return {
           select(_cols?: string) {
             if (table === 'app_settings') {
-              return { eq: async () => ({ data: { key: 'results_published', value: false }, error: null }) } as any;
+              return { eq: (_f: string, _v: any) => ({ maybeSingle: async () => ({ data: { key: 'results_published', value: false }, error: null }) }) } as any;
             }
             if (table === 'categories') {
               return { eq: async () => ({ data: [{ id: 'cat_1' }], error: null }) } as any;
             }
-            return { async select() { return { data: [], error: null } } } as any;
+            return { async order() { return { data: [], error: null } } } as any;
           },
         };
       },

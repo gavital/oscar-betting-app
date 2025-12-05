@@ -20,14 +20,18 @@ vi.mock('@/providers/SupabaseProvider', () => ({
 }))
 
 // Mock de toast (sonner)
-const toastSuccess = vi.fn()
-const toastError = vi.fn()
-vi.mock('sonner', () => ({
-  toast: {
-    success: toastSuccess,
-    error: toastError
-  }
+const hoisted = vi.hoisted(() => ({
+  toastSuccess: vi.fn(),
+  toastError: vi.fn(),
 }))
+vi.mock('sonner', () => {
+  return {
+    toast: {
+      success: hoisted.toastSuccess,
+      error: hoisted.toastError,
+    }
+  }
+})
 
 describe('LoginPage (UI)', () => {
   beforeEach(() => {
@@ -61,8 +65,8 @@ describe('LoginPage (UI)', () => {
       email: 'user@example.com',
       password: 'secret'
     })
-    expect(toastSuccess).toHaveBeenCalled()
-    expect(pushMock).toHaveBeenCalledWith('/')
+    expect(hoisted.toastSuccess).toHaveBeenCalled()
+    expect(pushMock).toHaveBeenCalledWith('/home')
     expect(refreshMock).toHaveBeenCalled()
   })
 
@@ -79,8 +83,8 @@ describe('LoginPage (UI)', () => {
     fireEvent.submit(submit.closest('form')!)
     await Promise.resolve()
 
-    expect(toastError).toHaveBeenCalled()
-    const callDesc = toastError.mock.calls[0]?.[0]?.description ?? toastError.mock.calls[0]?.[1]?.description
+    expect(hoisted.toastError).toHaveBeenCalled()
+    const callDesc = hoisted.toastError.mock.calls[0]?.[0]?.description ?? hoisted.toastError.mock.calls[0]?.[1]?.description
     expect(callDesc).toMatch(/E-mail ou senha incorretos/i)
     expect(pushMock).not.toHaveBeenCalled()
   })
@@ -93,8 +97,8 @@ describe('LoginPage (UI)', () => {
     fireEvent.submit(submit.closest('form')!)
     await Promise.resolve()
 
-    expect(toastError).toHaveBeenCalled()
-    const callDesc = toastError.mock.calls[0]?.[0]?.description ?? toastError.mock.calls[0]?.[1]?.description
+    expect(hoisted.toastError).toHaveBeenCalled()
+    const callDesc = hoisted.toastError.mock.calls[0]?.[0]?.description ?? hoisted.toastError.mock.calls[0]?.[1]?.description
     expect(callDesc).toMatch(/erro inesperado/i)
   })
 })

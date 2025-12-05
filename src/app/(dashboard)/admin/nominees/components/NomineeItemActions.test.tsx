@@ -1,7 +1,7 @@
 // src/app/(dashboard)/admin/nominees/components/NomineeItemActions.test.tsx
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, within } from '@testing-library/react'
 import { NomineeItemActions } from './NomineeItemActions'
 
 // Mock das server actions
@@ -51,7 +51,7 @@ describe('NomineeItemActions (UI)', () => {
 
     render(<NomineeItemActions nominee={nominee} categoryId={categoryId} />)
     const form = screen.getByTestId('update-form')
-    const nameInput = screen.getByDisplayValue('Movie A') as HTMLInputElement
+    const nameInput = within(form).getByDisplayValue('Movie A') as HTMLInputElement
 
     fireEvent.change(nameInput, { target: { value: 'Movie B' } })
     fireEvent.submit(form)
