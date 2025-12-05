@@ -25,6 +25,7 @@ describe('RankingPage (SSR): pódio e lista', () => {
               return { eq: async (_f: string, _v: any) => ({ data: [{ id: 'cat_1' }, { id: 'cat_2' }], error: null }) } as any;
             }
             if (table === 'nominees') {
+              // await supabase.from('nominees').select('id, category_id').eq('is_winner', true)
               return {
                 select: (_?: string) => Promise.resolve({
                   eq: async (_f: string, _v: any) => ({ data: [{ id: 'win_1' }, { id: 'win_2' }], error: null })
@@ -81,12 +82,7 @@ describe('RankingPage (SSR): pódio e lista', () => {
             }
             if (table === 'nominees') {
               return {
-                select: (_?: string) => ({
-                  eq: (_f: string, _v: any) => Promise.resolve({
-                    data: [{ id: 'win_1' }, { id: 'win_2' }],
-                    error: null
-                  })
-                })
+                eq: async (_f: string, _v: any) => ({ data: [], error: null })
               } as any;
             }
             if (table === 'bets') {

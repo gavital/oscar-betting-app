@@ -56,11 +56,9 @@ describe('UI: /bets - Minhas Apostas', () => {
             // bets do usuário
             if (table === 'bets') {
               return {
-                select: (_?: string) => ({
-                  eq: (_f1: string, _v1: any) => Promise.resolve({
-                    data: [{ category_id: 'cat_1', nominee_id: 'n1' }], // apenas cat_1 apostada
-                    error: null,
-                  }),
+                eq: async (_f: string, _v: any) => ({
+                  data: [{ category_id: 'cat_1', nominee_id: 'n1' }],
+                  error: null,
                 }),
               } as any;
             }
@@ -72,7 +70,6 @@ describe('UI: /bets - Minhas Apostas', () => {
 
     // Import depois de preparar mocks
     const Page = (await import('./page')).default;
-
     render(await Page());
     // Progresso: 1 de 2 (50%)
     expect(screen.getByText(/Progresso:\s*1 de 2 categorias\s*\(50%\)/i)).toBeInTheDocument();

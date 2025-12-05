@@ -33,14 +33,33 @@ describe('HomePage (SSR): status, estatísticas e banner', () => {
                 })
               } as any
             }
-            if (table === 'profiles') return { async select() { return { data: [{ id: 'u1' }, { id: 'u2' }], error: null } } } as any
-            if (table === 'bets') return { async select() { return { data: [{ id: 'b1' }], error: null } } } as any
-            if (table === 'categories') return { eq: async (_f: string, _v: any) => ({ data: [{ id: 'cat_1' }, { id: 'cat_2' }], error: null }) } as any
-            if (table === 'nominees') return {
-              select: (_?: string) => ({
+            if (table === 'profiles') {
+              return {
+                // await supabase.from('profiles').select('id')
+                async select() {
+                  return { data: [{ id: 'u1' }, { id: 'u2' }], error: null }
+                }
+              } as any
+            }
+            if (table === 'bets') {
+              return {
+                async select() {
+                  return { data: [{ id: 'b1' }], error: null }
+                }
+              } as any
+            }
+            if (table === 'categories') {
+              // await supabase.from('categories').select('id, name').eq('is_active', true)
+              return {
+                eq: async (_f: string, _v: any) => ({ data: [{ id: 'cat_1' }, { id: 'cat_2' }], error: null })
+              } as any
+            }
+            if (table === 'nominees') {
+              // await supabase.from('nominees').select('name, tmdb_data').limit(12)
+              return {
                 limit: async (_n: number) => ({ data: [], error: null })
-              })
-            } as any
+              } as any
+            }
             return { async order() { return { data: [], error: null } } } as any
           }
         }
@@ -74,14 +93,31 @@ describe('HomePage (SSR): status, estatísticas e banner', () => {
                 })
               } as any
             }
-            if (table === 'categories') return { eq: async (_f: string, _v: any) => ({ data: [{ id: 'cat_1' }, { id: 'cat_2' }], error: null }) } as any
-            if (table === 'nominees') return {
-              select: (_?: string) => ({
+            if (table === 'categories') {
+              return {
+                eq: async (_f: string, _v: any) => ({ data: [{ id: 'cat_1' }, { id: 'cat_2' }], error: null })
+              } as any
+            }
+            if (table === 'nominees') {
+              // await supabase.from('nominees').select('id').eq('is_winner', true)
+              return {
                 eq: async (_f: string, _v: any) => ({ data: [{ id: 'win_1' }], error: null })
-              })
-            } as any
-            if (table === 'bets') return { async select() { return { data: [{ user_id: 'u1', nominee_id: 'win_1' }], error: null } } } as any
-            if (table === 'profiles') return { async select() { return { data: [{ id: 'u1', name: 'Alice' }], error: null } } } as any
+              } as any
+            }
+            if (table === 'bets') {
+              return {
+                async select() {
+                  return { data: [{ user_id: 'u1', nominee_id: 'win_1' }], error: null }
+                }
+              } as any
+            }
+            if (table === 'profiles') {
+              return {
+                async select() {
+                  return { data: [{ id: 'u1', name: 'Alice' }], error: null }
+                }
+              } as any
+            }
             return { async order() { return { data: [], error: null } } } as any
           }
         }

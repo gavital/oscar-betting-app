@@ -2,6 +2,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
+import { act } from 'react'
 import LoginPage from './page'
 
 // Mock do router
@@ -97,8 +98,8 @@ describe('LoginPage (UI)', () => {
 
     await act(async () => {
       fireEvent.submit(submit.closest('form')!)
-    })
     await Promise.resolve()
+  })
 
     expect(hoisted.toastError).toHaveBeenCalled()
     const callDesc = hoisted.toastError.mock.calls[0]?.[0]?.description ?? hoisted.toastError.mock.calls[0]?.[1]?.description
