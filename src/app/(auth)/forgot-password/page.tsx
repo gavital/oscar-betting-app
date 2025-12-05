@@ -7,37 +7,37 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
+import { sendResetEmail } from './actions';
+
+type ForgotState =
+  | { ok: true }
+  | { ok: false; error: { code: string; message: string } }
+  | null;
 
 export default function ForgotPasswordPage() {
   const router = useRouter();
   const [email, setEmail] = useState('');
-  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      const res = await fetch('/api/auth/forgot', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
-      });
-      const json = await res.json();
-      if (!res.ok || !json.ok) throw new Error(json.error || 'Falha ao enviar link');
+  const [state, formAction, pending] = useActionState(async (_prev: ForgotState, fd: FormData) => {
+    // Preenche o FormData com email do input (por segurança)
+    if (!fd.get('email')) fd.set('email', email);
+    const res = await sendResetEmail(fd);
+    return res as any;
+  }, null as ForgotState);
 
+  useEffect(() => {
+    if (!state) return;
+    if (state.ok) {
       toast.success('Verifique seu e-mail', {
         description: 'Enviamos um link para redefinir sua senha.',
       });
       router.push('/login');
-    } catch (err: any) {
-      toast.error('Erro ao solicitar recuperação', {
-        description: err?.message ?? 'Tente novamente mais tarde.',
-      });
-      console.error('forgot-password error:', err);
-    } finally {
-      setLoading(false);
+      return;
     }
-  };
+    toast.error('Erro ao solicitar recuperação', {
+      description: state.error?.message ?? 'Tente novamente mais tarde.',
+    });
+  }, [state, router]);
 
   return (
     <div>
@@ -48,11 +48,12 @@ export default function ForgotPasswordPage() {
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form action={formAction} className="space-y-6">
         <div>
           <Label htmlFor="email">E-mail</Label>
           <Input
             id="email"
+            name="email"
             type="email"
             required
             value={email}
@@ -60,8 +61,8 @@ export default function ForgotPasswordPage() {
             placeholder="seu@email.com"
           />
         </div>
-        <Button type="submit" className="w-full" disabled={loading}>
-          {loading ? 'Enviando...' : 'Enviar link de redefinição'}
+        <Button type="submit" className="w-full" disabled={pending}>
+          {pending ? 'Enviando...' : 'Enviar link de redefinição'}
         </Button>
       </form>
     </div>
