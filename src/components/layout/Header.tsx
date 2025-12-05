@@ -7,9 +7,6 @@ import { useSupabase } from '@/providers/SupabaseProvider'
 import { useRouter, usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
-const pathname = usePathname()
-const isActive = (href: string) => pathname?.startsWith(href)
-
 interface HeaderProps {
   user: any | null
 }
@@ -26,6 +23,8 @@ export function Header({ user }: HeaderProps) {
   const router = useRouter()
   const supabase = useSupabase()
   const [profile, setProfile] = useState<Profile | null>(null)
+  const pathname = usePathname()
+  const isActive = (href: string) => pathname?.startsWith(href)
 
   useEffect(() => {
     let mounted = true

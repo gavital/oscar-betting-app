@@ -1,5 +1,5 @@
 // src/app/(auth)/login/page.test.tsx
-// @vitest-environment jsdom
+@vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import LoginPage from './page'
