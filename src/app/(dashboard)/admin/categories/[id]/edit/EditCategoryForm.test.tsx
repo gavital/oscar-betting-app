@@ -2,6 +2,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { EditCategoryForm } from './EditCategoryForm'
+import { act } from 'react'
 
 // Mock do router do Next
 vi.mock('next/navigation', () => {
@@ -16,9 +17,21 @@ vi.mock('next/navigation', () => {
 // Mock dos toasts
 const showSuccessToast = vi.fn()
 const showErrorToast = vi.fn()
-vi.mock('@/lib/ui/messages', () => ({
-  showSuccessToast: (...args: any[]) => showSuccessToast(...args),
-  showErrorToast: (...args: any[]) => showErrorToast(...args),
+vi.mock'sonner', () => ({
+  toast: {
+    success: (...args: any[]) => showSuccessToast(...args),
+    error: (...args: any[]) => showErrorToast(...args)
+  }
+}))
+
+vi.mock('../actions', () => ({
+  editCategory: vi.fn(async (fd: FormData) => {
+    const name = String(fd.get('name'))
+    if (name.toLowerCase() === 'melhor filme') {
+      return { ok: false, error: { code: 'CATEGORY_NAME_DUPLICATE', message: 'Duplicada' } }
+    }
+    return { ok: true }
+  })
 }))
 
 // Mock da server action editCategory
@@ -81,13 +94,16 @@ describe('EditCategoryForm (UI)', () => {
     const form = screen.getByText(/Salvar Alterações/i).closest('form')!
 
     // Submit do form
-    fireEvent.submit(form)
+    await act(async () => { fireEvent.submit(form) })
 
     // Aguarda microtask
     await Promise.resolve()
 
     // Valida que o toast de sucesso foi chamado e o router.replace também
     expect(showSuccessToast).toHaveBeenCalledWith('Categoria atualizada!')
+    expect(showSuccessToast).toHaveBeenCalled()
+    // Para erro:
+    await act(async () => { fireEvent.submit(form) })
   })
 
   it('exibe toast de erro quando a server action retorna erro', async () => {

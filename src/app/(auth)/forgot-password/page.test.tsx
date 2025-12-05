@@ -35,9 +35,7 @@ describe('ForgotPasswordPage (UI): envia reset e exibe toasts', () => {
     (sendResetEmail as any).mockResolvedValueOnce({ ok: true });
 
     render(<ForgotPasswordPage />);
-
-    const input = screen.getByLabelText(/E-mail/i);
-    fireEvent.change(input, { target: { value: 'user@example.com' } });
+    fireEvent.change(screen.getByLabelText(/E-mail/i), { target: { value: 'user@example.com' } })
 
     fireEvent.click(screen.getByRole('button', { name: /Enviar link/i }));
 
@@ -51,10 +49,11 @@ describe('ForgotPasswordPage (UI): envia reset e exibe toasts', () => {
   it('erro: mostra toast de erro com descrição', async () => {
     (sendResetEmail as any).mockResolvedValueOnce({
       ok: false,
-      error: { code: 'AUTH_RESET_ERROR', message: 'Falha ao enviar link' },
+      error: { code: 'AUTH_RESET_ERROR', message: 'Falha ao enviar link' }
     });
 
     render(<ForgotPasswordPage />);
+    fireEvent.change(screen.getByLabelText(/E-mail/i), { target: { value: 'user@example.com' } })
     fireEvent.click(screen.getByRole('button', { name: /Enviar link/i }));
 
     await waitFor(() => {
@@ -66,12 +65,14 @@ describe('ForgotPasswordPage (UI): envia reset e exibe toasts', () => {
 
   it('indica “Enviando...” enquanto pending', async () => {
     (sendResetEmail as any).mockImplementationOnce(async () => {
-      await new Promise(res => setTimeout(res, 10));
+      await new Promise(res => setTimeout(res, 50));
       return { ok: true };
     });
 
     render(<ForgotPasswordPage />);
+    fireEvent.change(screen.getByLabelText(/E-mail/i), { target: { value: 'user@example.com' } })
     fireEvent.click(screen.getByRole('button', { name: /Enviar link/i }));
+
     expect(await screen.findByRole('button', { name: /Enviando.../i })).toBeInTheDocument();
   });
 });
