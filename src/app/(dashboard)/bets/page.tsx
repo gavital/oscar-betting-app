@@ -67,7 +67,7 @@ export default async function MyBetsPage() {
           Progresso: {completed} de {total} categorias ({progressPct}%)
         </p>
         {/* Status global de apostas */}
-        <div className="mt-2">
+        <div className="mt-2 flex items-center gap-2">
           {betsOpen ? (
             <span className="inline-flex items-center text-xs bg-green-100 text-green-700 px-2 py-1 rounded">
               APOSTAS ABERTAS
@@ -77,22 +77,45 @@ export default async function MyBetsPage() {
               APOSTAS FECHADAS
             </span>
           )}
-          {' '}
           {resultsPublished && (
             <span className="inline-flex items-center text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded">
               RESULTADOS PUBLICADOS
             </span>
           )}
         </div>
-        {/* Progress bar */}
-        <div className="w-full bg-gray-200 h-2 rounded mt-2">
+        {/* Progress bar acessível */}
+        <div
+          className="w-full bg-gray-200 h-2 rounded mt-2"
+          role="progressbar"
+          aria-valuenow={progressPct}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-label={`Progresso de apostas: ${completed} de ${total} (${progressPct}%)`}
+        >
           <div className="bg-blue-600 h-2 rounded" style={{ width: `${progressPct}%` }} />
         </div>
+        {!betsOpen && (
+          <p className="mt-2 text-xs text-gray-600">
+            As apostas estão fechadas no momento. Você poderá visualizar suas escolhas, mas não editar.
+          </p>
+        )}
       </div>
 
       <ul className="divide-y">
         {(categories ?? []).map(cat => {
           const done = betByCategory.has(cat.id)
+          const canNavigate = betsOpen // só navega para fazer/editar se apostas estiverem abertas
+          const button = (
+            <Button
+              variant={done ? 'outline' : 'default'}
+              disabled={!canNavigate}
+              aria-disabled={!canNavigate}
+              title={!canNavigate ? 'Apostas estão fechadas' : undefined}
+            >
+              {done ? 'Editar aposta' : 'Fazer aposta'}
+            </Button>
+          )
+
           return (
             <li key={cat.id} className="flex items-center justify-between py-3">
               <div className="flex items-center gap-3">
@@ -103,14 +126,13 @@ export default async function MyBetsPage() {
                   <span className="text-xs px-2 py-1 rounded bg-yellow-100 text-yellow-700">Pendente</span>
                 )}
               </div>
-              <Link href={`/bets/${cat.id}`}>
-                <Button variant={done ? 'outline' : 'default'}>
-                  {done ? 'Editar aposta' : 'Fazer aposta'}
-                </Button>
-              </Link>
+            {canNavigate ? (
+              <Link href={`/bets/${cat.id}`}>{button}</Link>
+            ) : (
+              <div>{button}</div>
+            )}
             </li>
-          )
-        })}
+        )})}
       </ul>
     </div>
   )

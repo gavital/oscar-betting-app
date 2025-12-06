@@ -4,151 +4,137 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from '@/components/ui/form'
 import { toast } from 'sonner'
 import { useSupabase } from '@/providers/SupabaseProvider'
 import Link from 'next/link'
+import { useForm } from 'react-hook-form'
+import { z } from 'zod'
+import { zodResolver } from '@hookform/resolvers/zod'
+
+const schema = z.object({
+  name: z.string().min(2, 'Informe seu nome completo'),
+  email: z.string().email('Informe um e-mail válido'),
+  password: z.string().min(6, 'A senha deve ter pelo menos 6 caracteres'),
+  confirmPassword: z.string(),
+}).refine((vals) => vals.password === vals.confirmPassword, {
+  message: 'As senhas não coincidem',
+  path: ['confirmPassword'],
+})
+
+type RegisterForm = z.infer<typeof schema>
 
 export default function RegisterPage() {
   const router = useRouter()
   const supabase = useSupabase()
 
-  const [loading, setLoading] = useState(false)
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
+  const form = useForm<RegisterForm>({
+    resolver: zodResolver(schema),
+    defaultValues: { name: '', email: '', password: '', confirmPassword: '' },
+    mode: 'onChange',
   })
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-
-    if (formData.password !== formData.confirmPassword) {
-      toast.error("Erro", {
-        description: 'As senhas não coincidem',
-      })
-      setLoading(false)
-      return
-    }
-
-    if (formData.password.length < 6) {
-      toast.error("Erro", {
-        description: 'A senha deve ter pelo menos 6 caracteres',
-      })
-      setLoading(false)
-      return
-    }
-
+  const onSubmit = async (values: RegisterForm) => {
     try {
       // Cria usuário com email e senha
       const { error } = await supabase.auth.signUp({
-        email: formData.email,
-        password: formData.password,
+        email: values.email,
+        password: values.password,
         options: {
-          data: {
-            name: formData.name,
-            role: 'user',
-          },
-          // Ajuste do path
+          data: { name: values.name, role: 'user' },
           emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/callback`,
         },
       })     
 
       if (error) {
         if (error.message.includes('already exists')) {
-          toast.error("Erro", { // ALTERADO
-            description: 'Este e-mail já está cadastrado',
-          })
+          toast.error('Erro', { description: 'Este e-mail já está cadastrado' })
         } else {
-          toast.error("Erro", { // ALTERADO
-            description: error.message,
-          })
+          toast.error('Erro', { description: error.message })
         }
         return
       }
 
-      toast.success("Sucesso!", { // ALTERADO
-        description: 'Cadastro realizado. Verifique seu e-mail.',
-      })
-
-      router.push(`/confirm?email=${encodeURIComponent(formData.email)}`)
-    } catch (error) {
-      toast.error("Erro", { // ALTERADO
-        description: 'Ocorreu um erro inesperado',
-      })
-    } finally {
-      setLoading(false)
+      toast.success('Sucesso!', { description: 'Cadastro realizado. Verifique seu e-mail.' })
+      router.push(`/confirm?email=${encodeURIComponent(values.email)}`)
+    } catch {
+      toast.error('Erro', { description: 'Ocorreu um erro inesperado' })
     }
   }
+
+  const isSubmitting = form.formState.isSubmitting
+  const isValid = form.formState.isValid
 
   return (
     <div>
       <div className="text-center mb-8">
         <h1 className="text-3xl font-bold text-gray-900">Criar Conta</h1>
-        <p className="mt-2 text-sm text-gray-600">
-          Comece a apostar nos vencedores do Oscar!
-        </p>
+        <p className="mt-2 text-sm text-gray-600">Comece a apostar nos vencedores do Oscar!</p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div>
-          <Label htmlFor="name">Nome completo</Label>
-          <Input
-            id="name"
-            type="text"
-            required
-            value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            placeholder="Seu nome"
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6" noValidate>
+          <FormField
+            control={form.control}
+            name="name"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Nome completo</FormLabel>
+                <FormControl>
+                  <Input id="name" type="text" placeholder="Seu nome" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
           />
-        </div>
 
-        <div>
-          <Label htmlFor="email">E-mail</Label>
-          <Input
-            id="email"
-            type="email"
-            required
-            value={formData.email}
-            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-            placeholder="seu@email.com"
+          <FormField
+            control={form.control}
+            name="email"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>E-mail</FormLabel>
+                <FormControl>
+                  <Input id="email" type="email" placeholder="seu@email.com" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
           />
-        </div>
 
-        <div>
-          <Label htmlFor="password">Senha</Label>
-          <Input
-            id="password"
-            type="password"
-            required
-            value={formData.password}
-            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-            placeholder="******"
+          <FormField
+            control={form.control}
+            name="password"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Senha</FormLabel>
+                <FormControl>
+                  <Input id="password" type="password" placeholder="******" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
           />
-        </div>
 
-        <div>
-          <Label htmlFor="confirmPassword">Confirmar senha</Label>
-          <Input
-            id="confirmPassword"
-            type="password"
-            required
-            value={formData.confirmPassword}
-            onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-            placeholder="******"
+          <FormField
+            control={form.control}
+            name="confirmPassword"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Confirmar senha</FormLabel>
+                <FormControl>
+                  <Input id="confirmPassword" type="password" placeholder="******" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
           />
-        </div>
 
-        <Button
-          type="submit"
-          className="w-full"
-          disabled={loading}
-        >
-          {loading ? 'Criando conta...' : 'Criar conta'}
+          <Button type="submit" className="w-full" disabled={!isValid || isSubmitting}>
+            {isSubmitting ? 'Criando conta...' : 'Criar conta'}
         </Button>
       </form>
+      </Form>
 
       <div className="mt-6 text-center">
         <p className="text-sm text-gray-600">

@@ -58,7 +58,15 @@ export function Header({ user }: HeaderProps) {
   }
 
   return (
-    <header className="bg-white shadow-sm border-b">
+    <header className="bg-white shadow-sm border-b relative">
+      {/* Skip link para acessibilidade */}
+      <a
+        href="#main-content"
+        className="absolute left-4 top-0 -translate-y-full focus:translate-y-2 transition-all bg-indigo-600 text-white px-3 py-2 rounded"
+      >
+        Ir para o conteúdo principal
+      </a>
+
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           <Link href="/home" className="text-2xl font-bold text-purple-600">
@@ -66,40 +74,40 @@ export function Header({ user }: HeaderProps) {
           </Link>
           {/* <Link href="/'home'" className="text-sm text-gray-700 hover:underline">Home</Link> */}
 
-          <nav className="flex items-center space-x-4">
+          <nav className="flex items-center space-x-4" aria-label="Navegação principal">
             {user ? (
               <>
-                <Link href="/home" aria-label="Home">
+                <Link href="/home" aria-label="Home" aria-current={isActive('/home') ? 'page' : undefined}>
                   <Button variant={isActive('/home') ? 'default' : 'ghost'}>Home</Button>
                 </Link>
-                <Link href="/bets" aria-label="Minhas Apostas">
+                <Link href="/bets" aria-label="Minhas Apostas" aria-current={isActive('/bets') ? 'page' : undefined}>
                   <Button variant={isActive('/bets') ? 'default' : 'ghost'}>Minhas Apostas</Button>
                 </Link>
-                <Link href="/ranking" aria-label="Ranking">
+                <Link href="/ranking" aria-label="Ranking" aria-current={isActive('/ranking') ? 'page' : undefined}>
                   <Button variant={isActive('/ranking') ? 'default' : 'ghost'}>Ranking</Button>
                 </Link>
 
                 {profile?.role === 'admin' && (
                   <>
-                    <Link href="/admin/categories">
+                    <Link href="/admin/categories" aria-label="Admin: Categorias">
                       <Button variant="ghost">Admin: Categorias</Button>
                     </Link>
-                    <Link href="/admin/nominees">
+                    <Link href="/admin/nominees" aria-label="Admin: Indicados">
                       <Button variant="ghost">Admin: Indicados</Button>
                     </Link>
-                    <Link href="/admin/settings">
+                    <Link href="/admin/settings" aria-label="Admin: Controle de Apostas">
                       <Button variant="ghost">Admin: Controle de Apostas</Button>
                     </Link>
                   </>
                 )}
 
-                <Button onClick={handleSignOut} variant="outline">
+                <Button onClick={handleSignOut} variant="outline" aria-label="Sair da conta">
                   Sair
                 </Button>
 
                 {/* Avatar/Perfil */}
-                <div className="flex items-center space-x-2">
-                  <UserCircle className="h-8 w-8 text-gray-600" />
+                <div className="flex items-center space-x-2" aria-label="Perfil do usuário">
+                  <UserCircle className="h-8 w-8 text-gray-600" aria-hidden="true" />
                   <span className="text-sm font-medium text-gray-700">
                     {profile?.name || user?.email?.split('@')[0] || 'Usuário'}
                   </span>
@@ -107,10 +115,10 @@ export function Header({ user }: HeaderProps) {
               </>
             ) : (
               <>
-                <Link href="/login">
+                <Link href="/login" aria-label="Entrar">
                   <Button variant="ghost">Entrar</Button>
                 </Link>
-                <Link href="/register">
+                <Link href="/register" aria-label="Criar Conta">
                   <Button>Criar Conta</Button>
                 </Link>
               </>

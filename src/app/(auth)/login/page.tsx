@@ -4,107 +4,104 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from '@/components/ui/form'
 import { toast } from 'sonner'
 import { useSupabase } from '@/providers/SupabaseProvider'
 import Link from 'next/link'
+import { useForm } from 'react-hook-form'
+import { z } from 'zod'
+import { zodResolver } from '@hookform/resolvers/zod'
+
+const schema = z.object({
+  email: z.string().email('Informe um e-mail válido'),
+  password: z.string().min(6, 'A senha deve ter pelo menos 6 caracteres'),
+})
+
+type LoginForm = z.infer<typeof schema>
 
 export default function LoginPage() {
   const router = useRouter()
   const supabase = useSupabase()
 
-  const [loading, setLoading] = useState(false)
-  const [formData, setFormData] = useState({
-    email: '',
-    password: '',
+  const form = useForm<LoginForm>({
+    resolver: zodResolver(schema),
+    defaultValues: { email: '', password: '' },
+    mode: 'onChange',
   })
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-
+  const onSubmit = async (values: LoginForm) => {
     try {
       const { error } = await supabase.auth.signInWithPassword({
-        email: formData.email,
-        password: formData.password,
+        email: values.email,
+        password: values.password,
       })
 
       if (error) {
-        toast.error("Erro", {
-          description: 'E-mail ou senha incorretos',
-        })
+        toast.error('Erro', { description: 'E-mail ou senha incorretos' })
         return
       }
 
-      toast.success("Sucesso!", {
-        description: 'Login realizado com sucesso.',
-      })
-      
+      toast.success('Sucesso!', { description: 'Login realizado com sucesso.' })
       router.push('/home')
       router.refresh()
-    } catch (error) {
-      toast.error("Erro", {
-        description: 'Ocorreu um erro inesperado',
-      })
-    } finally {
-      setLoading(false)
+    } catch {
+      toast.error('Erro', { description: 'Ocorreu um erro inesperado' })
     }
   }
 
+  const isSubmitting = form.formState.isSubmitting
+  const isValid = form.formState.isValid
 
   return (
     <div>
       <div className="text-center mb-8">
         <h1 className="text-3xl font-bold text-gray-900">Entrar</h1>
-        <p className="mt-2 text-sm text-gray-600">
-          Bem de volta! Acesse sua conta.
-        </p>
+        <p className="mt-2 text-sm text-gray-600">Bem de volta! Acesse sua conta.</p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div>
-          <Label htmlFor="email">E-mail</Label>
-          <Input
-            id="email"
-            type="email"
-            required
-            value={formData.email}
-            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-            placeholder="seu@email.com"
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6" noValidate>
+          <FormField
+            control={form.control}
+            name="email"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Email</FormLabel>
+                <FormControl>
+                  <Input id="email" type="email" placeholder="seu@email.com" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
           />
-        </div>
 
-        <div>
-          <Label htmlFor="password">Senha</Label>
-          <Input
-            id="password"
-            type="password"
-            required
-            value={formData.password}
-            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-            placeholder="******"
+          <FormField
+            control={form.control}
+            name="password"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Senha</FormLabel>
+                <FormControl>
+                  <Input id="password" type="password" placeholder="******" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
           />
-        </div>
 
         <div className="flex items-center justify-between">
           <div className="text-sm">
-            <Link
-              href="/forgot-password"
-              className="font-medium text-purple-600 hover:text-purple-500"
-            >
+              <Link href="/forgot-password" className="font-medium text-purple-600 hover:text-purple-500">
               Esqueci minha senha
             </Link>
           </div>
         </div>
 
-        <Button
-          type="submit"
-          className="w-full"
-          disabled={loading}
-        >
-          {loading ? 'Entrando...' : 'Entrar'}
+          <Button type="submit" className="w-full" disabled={!isValid || isSubmitting}>
+            {isSubmitting ? 'Entrando...' : 'Entrar'}
         </Button>
       </form>
+      </Form>
 
       <div className="mt-6 text-center">
         <p className="text-sm text-gray-600">
