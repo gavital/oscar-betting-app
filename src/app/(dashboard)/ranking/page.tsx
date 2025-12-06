@@ -85,6 +85,16 @@ export default async function RankingPage({
   const nameByUser = new Map((profiles ?? []).map(p => [p.id, p.name ?? null]))
   const emailByUser = new Map((profiles ?? []).map(p => [p.id, p.email ?? null]))
 
+  // Helper de exibição: nome -> prefixo do e-mail -> user_id
+  const getDisplayName = (userId: string) => {
+    const name = nameByUser.get(userId) ?? null
+    if (name && name.trim().length > 0) return name
+    const email = emailByUser.get(userId) ?? null
+    const local = email?.split('@')[0]
+    if (local && local.trim().length > 0) return local
+    return userId
+  }
+
   // Usuário atual (para destacar na lista)
   const { data: { user } } = await supabase.auth.getUser()
 
@@ -97,7 +107,8 @@ export default async function RankingPage({
 
   let list: UserScore[] = Array.from(counts.entries()).map(([user_id, score]) => ({
     user_id,
-    name: nameByUser.get(user_id) ?? null,
+    // Armazena também o fallback para que busca por nome funcione melhor
+    name: nameByUser.get(user_id) ?? (emailByUser.get(user_id)?.split('@')[0] ?? null),
     email: emailByUser.get(user_id) ?? null,
     score
   }))
@@ -201,7 +212,7 @@ export default async function RankingPage({
               {idx === 0 && <span aria-hidden="true">🥇</span>}
               {idx === 1 && <span aria-hidden="true">🥈</span>}
               {idx === 2 && <span aria-hidden="true">🥉</span>}
-              <span>{p.name ?? p.user_id}</span>
+              <span>{getDisplayName(p.user_id)}</span>
             </div>
             <div className="text-sm text-gray-700">Pontuação: {p.score}/{total}</div>
             <Link href={`/ranking/${p.user_id}`} className="text-xs text-indigo-600 hover:underline">Ver Apostas</Link>
@@ -226,6 +237,7 @@ export default async function RankingPage({
               const rank = start + idx + 1
               const isYou = user?.id === u.user_id
               const pct = total > 0 ? Math.round((u.score / total) * 100) : 0
+              const displayName = getDisplayName(u.user_id)
 
               return (
             <li key={u.user_id} className="flex items-center justify-between py-2">
@@ -233,7 +245,7 @@ export default async function RankingPage({
                     <div className="flex items-center gap-2">
                       <span className="mr-2 text-sm text-gray-500">#{rank}</span>
                       <span className={`font-medium ${isYou ? 'text-purple-700' : ''}`}>
-                        {u.name ?? u.user_id} {isYou && <span className="ml-2 text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded">Você</span>}
+                        {displayName} {isYou && <span className="ml-2 text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded">Você</span>}
                       </span>
                 <span className="ml-2 text-sm text-gray-700">{u.score}/{total}</span>
                     </div>
@@ -244,7 +256,7 @@ export default async function RankingPage({
                       aria-valuenow={pct}
                       aria-valuemin={0}
                       aria-valuemax={100}
-                      aria-label={`Progresso de acertos de ${u.name ?? u.user_id}: ${u.score}/${total} (${pct}%)`}
+                      aria-label={`Progresso de acertos de ${displayName}: ${u.score}/${total} (${pct}%)`}
                     >
                       <div className="bg-blue-600 h-2 rounded" style={{ width: `${pct}%` }} />
                     </div>

@@ -11,9 +11,17 @@ export default async function UserRankingDetailsPage({
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('id, name')
+    .select('id, name, email')
     .eq('id', userId)
     .maybeSingle()
+
+  const displayName = (() => {
+    const name = profile?.name?.trim()
+    if (name && name.length > 0) return name
+    const emailLocal = profile?.email?.split('@')[0]
+    if (emailLocal && emailLocal.trim().length > 0) return emailLocal
+    return userId
+  })()
 
   const { data: bets } = await supabase
     .from('bets')
@@ -62,7 +70,7 @@ export default async function UserRankingDetailsPage({
     <div className="space-y-6">
       <div className="border-b pb-4 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">{profile?.name ?? userId}</h1>
+          <h1 className="text-2xl font-bold">{displayName}</h1>
           <p className="text-sm text-gray-600">
             Pontuação: {score}/{total}
           </p>
