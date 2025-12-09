@@ -14,14 +14,6 @@ interface HeaderProps {
   isAdmin?: boolean
 }
 
-// interface Profile {
-//   id: string
-//   name: string
-//   role: 'user' | 'admin'
-//   created_at: string
-//   updated_at: string
-// }
-
 export function Header({ user, isAdmin = false }: HeaderProps) {
   const router = useRouter()
   const supabase = useSupabase()
@@ -100,12 +92,16 @@ export function Header({ user, isAdmin = false }: HeaderProps) {
                 </Button>
 
                 {/* Avatar/Perfil */}
-                <div className="flex items-center space-x-2" aria-label="Perfil do usuário">
+                <Link
+                  href="/profile"
+                  aria-label="Abrir página de perfil"
+                  className="flex items-center space-x-2 rounded px-2 py-1 hover:bg-muted focus:bg-muted focus:outline-none focus:ring-2 focus:ring-ring"
+                >
                   <UserCircle className="h-8 w-8 text-foreground/70" aria-hidden="true" />
                   <span className="text-sm font-medium text-foreground">
                     {profileName ?? user?.email?.split('@')[0] ?? 'Usuário'}
                   </span>
-                </div>
+                </Link>
               </>
             ) : (
               <>
