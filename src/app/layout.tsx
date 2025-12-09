@@ -6,6 +6,7 @@ import { TanstackProvider } from '@/providers/TanstackProvider'
 import { SupabaseProvider } from '@/providers/SupabaseProvider'
 import Link from 'next/link'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { cookies } from 'next/headers'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -16,10 +17,8 @@ export const metadata: Metadata = {
 
 export default async function RootLayout({
   children,
-}: Readonly<{
-  children: React.ReactNode
-}>) {
-  // SSR: tenta obter user e role para exibir link admin
+}: Readonly<{ children: React.ReactNode }>) {
+  // SSR: tenta obter user e role para exibir link admin (mantido)
   let role: 'admin' | 'user' = 'user'
   try {
     const supabase = await createServerSupabaseClient()
@@ -36,9 +35,18 @@ export default async function RootLayout({
     // ignora erros, mantemos role=user
   }
 
+  // Tema inicial via cookie para evitar flash (light/dark)
+  const themeCookie = cookies().get('theme')?.value as 'dark' | 'light' | undefined
+  const initialThemeClass = themeCookie === 'dark' ? 'dark' : ''
+
   return (
-    <html lang="pt-BR">
-      <body className={inter.className}>
+    <html
+      lang="pt-BR"
+      className={`${initialThemeClass} ${inter.className}`}
+      suppressHydrationWarning
+      data-role={role} // opcional: expõe role no DOM para inspeção/uso
+    >
+      <body>
         <SupabaseProvider>
           <TanstackProvider>
             {children}

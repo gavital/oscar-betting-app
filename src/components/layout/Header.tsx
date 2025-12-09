@@ -6,6 +6,7 @@ import { UserCircle } from 'lucide-react'
 import { useSupabase } from '@/providers/SupabaseProvider'
 import { useRouter, usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
+import { ThemeToggle } from '@/components/ui/ThemeToggle'
 
 interface HeaderProps {
   user: any | null
@@ -25,6 +26,8 @@ export function Header({ user }: HeaderProps) {
   const [profile, setProfile] = useState<Profile | null>(null)
   const pathname = usePathname()
   const isActive = (href: string) => pathname?.startsWith(href)
+
+  const [profileName, setProfileName] = useState<string | null>(null)
 
   useEffect(() => {
     let mounted = true
@@ -58,7 +61,7 @@ export function Header({ user }: HeaderProps) {
   }
 
   return (
-    <header className="bg-white shadow-sm border-b relative">
+    <header className="bg-white dark:bg-background shadow-sm border-b relative">
       {/* Skip link para acessibilidade */}
       <a
         href="#main-content"
@@ -75,6 +78,9 @@ export function Header({ user }: HeaderProps) {
           {/* <Link href="/'home'" className="text-sm text-gray-700 hover:underline">Home</Link> */}
 
           <nav className="flex items-center space-x-4" aria-label="Navegação principal">
+            {/* Botão de tema */}
+            <ThemeToggle />
+            
             {user ? (
               <>
                 <Link href="/home" aria-label="Home" aria-current={isActive('/home') ? 'page' : undefined}>
