@@ -35,8 +35,9 @@ export default async function RootLayout({
     // ignora erros, mantemos role=user
   }
 
-  // Tema inicial via cookie para evitar flash (light/dark)
-  const themeCookie = cookies().get('theme')?.value as 'dark' | 'light' | undefined
+  // Tema inicial via cookie para evitar flash (light/dark) – Next 16: cookies() é assíncrono
+  const cookieStore = await cookies()
+  const themeCookie = cookieStore.get('theme')?.value as 'dark' | 'light' | undefined
   const initialThemeClass = themeCookie === 'dark' ? 'dark' : ''
 
   return (
