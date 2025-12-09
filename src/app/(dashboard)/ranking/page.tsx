@@ -135,14 +135,14 @@ export default async function RankingPage({
       case 'score_asc':
         return a.score - b.score || an.localeCompare(bn)
       case 'name_asc':
-        return an.localeCompare(bn) || b.score - a.score
+        return (a.name ?? a.user_id).localeCompare(b.name ?? b.user_id) || b.score - a.score
       case 'score_desc':
       default:
         return b.score - a.score || an.localeCompare(bn)
     }
   })
 
-  // Filtro (q: busca por nome)
+  // Filtro
   const q = (sp.q ?? '').toLowerCase().trim()
   if (q) {
     list = list.filter(u =>
@@ -181,7 +181,7 @@ export default async function RankingPage({
       {/* Cabeçalho e filtros */}
       <div className="border-b pb-4">
         <h1 className="text-2xl font-bold">Ranking</h1>
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-muted-foreground">
           Total de categorias consideradas: {total}
         </p>
         <div className="mt-2">
@@ -197,25 +197,40 @@ export default async function RankingPage({
               name="q"
               defaultValue={sp.q ?? ''}
               placeholder="Buscar por nome"
-              className="flex-1 border rounded px-3 py-2 text-sm"
+              className="flex-1 border rounded px-3 py-2 text-sm bg-card text-foreground"
               aria-label="Buscar participantes"
             />
             <input type="hidden" name="sort" value={sort} />
             <input type="hidden" name="perPage" value={perPage} />
-            <button type="submit" className="border rounded px-3 py-2 text-sm bg-white hover:bg-gray-50">
+            <button type="submit" className="border rounded px-3 py-2 text-sm bg-card hover:bg-muted">
               Buscar
             </button>
           </form>
 
           <div className="flex gap-2">
             <Link href={`/ranking${qs({ sort: 'score_desc', page: '1' })}`} aria-label="Ordenar por maior pontuação">
-              <button className={`border rounded px-3 py-2 text-sm ${sort === 'score_desc' ? 'bg-gray-100' : 'bg-white hover:bg-gray-50'}`}>Score ↓</button>
+              <button
+                aria-pressed={sort === 'score_desc'}
+                className={`border rounded px-3 py-2 text-sm ${sort === 'score_desc' ? 'bg-muted text-foreground' : 'bg-card hover:bg-muted'}`}
+              >
+                Score ↓
+              </button>
             </Link>
             <Link href={`/ranking${qs({ sort: 'score_asc', page: '1' })}`} aria-label="Ordenar por menor pontuação">
-              <button className={`border rounded px-3 py-2 text-sm ${sort === 'score_asc' ? 'bg-gray-100' : 'bg-white hover:bg-gray-50'}`}>Score ↑</button>
+              <button
+                aria-pressed={sort === 'score_asc'}
+                className={`border rounded px-3 py-2 text-sm ${sort === 'score_asc' ? 'bg-muted text-foreground' : 'bg-card hover:bg-muted'}`}
+              >
+                Score ↑
+              </button>
             </Link>
             <Link href={`/ranking${qs({ sort: 'name_asc', page: '1' })}`} aria-label="Ordenar por nome A-Z">
-              <button className={`border rounded px-3 py-2 text-sm ${sort === 'name_asc' ? 'bg-gray-100' : 'bg-white hover:bg-gray-50'}`}>Nome A–Z</button>
+              <button
+                aria-pressed={sort === 'name_asc'}
+                className={`border rounded px-3 py-2 text-sm ${sort === 'name_asc' ? 'bg-muted text-foreground' : 'bg-card hover:bg-muted'}`}
+              >
+                Nome A–Z
+              </button>
             </Link>
           </div>
         </div>
@@ -229,20 +244,20 @@ export default async function RankingPage({
       {/* Pódio */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {podium.map((p, idx) => (
-          <div key={p.user_id} className="border rounded p-4">
-            <div className="text-sm text-gray-500">{idx + 1}º lugar</div>
+          <div key={p.user_id} className="border rounded p-4 bg-card">
+            <div className="text-sm text-foreground/70">{idx + 1}º lugar</div>
             <div className="text-lg font-semibold flex items-center gap-2">
               {idx === 0 && <span aria-hidden="true">🥇</span>}
               {idx === 1 && <span aria-hidden="true">🥈</span>}
               {idx === 2 && <span aria-hidden="true">🥉</span>}
               <span>{getDisplayName(p.user_id, p.name)}</span>
             </div>
-            <div className="text-sm text-gray-700">Pontuação: {p.score}/{total}</div>
+            <div className="text-sm text-foreground/80">Pontuação: {p.score}/{total}</div>
             <Link href={`/ranking/${p.user_id}`} className="text-xs text-indigo-600 hover:underline">Ver Apostas</Link>
           </div>
         ))}
         {podium.length === 0 && (
-          <div className="text-sm text-gray-500">Sem dados para o pódio ainda.</div>
+          <div className="text-sm text-foreground/70">Sem dados para o pódio ainda.</div>
         )}
       </div>
 
@@ -251,7 +266,7 @@ export default async function RankingPage({
         <h2 className="text-lg font-bold">Participantes</h2>
 
         {visible.length === 0 ? (
-          <div className="p-4 border rounded bg-gray-50 text-gray-700 text-sm">
+          <div className="p-4 border rounded bg-muted text-foreground/80 text-sm">
             Nenhum participante encontrado para o filtro aplicado.
           </div>
         ) : (
@@ -266,15 +281,15 @@ export default async function RankingPage({
             <li key={u.user_id} className="flex items-center justify-between py-2">
                   <div className="max-w-[70%]">
                     <div className="flex items-center gap-2">
-                      <span className="mr-2 text-sm text-gray-500">#{rank}</span>
+                      <span className="mr-2 text-sm text-foreground/70">#{rank}</span>
                       <span className={`font-medium ${isYou ? 'text-purple-700' : ''}`}>
                         {displayName} {isYou && <span className="ml-2 text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded">Você</span>}
                       </span>
-                <span className="ml-2 text-sm text-gray-700">{u.score}/{total}</span>
+                      <span className="ml-2 text-sm text-foreground/80">{u.score}/{total}</span>
                     </div>
                     {/* Barra de progresso do usuário */}
                     <div
-                      className="mt-1 w-full bg-gray-200 h-2 rounded"
+                      className="mt-1 w-full bg-muted h-2 rounded"
                       role="progressbar"
                       aria-valuenow={pct}
                       aria-valuemin={0}
@@ -297,16 +312,16 @@ export default async function RankingPage({
             href={`/ranking${qs({ page: String(Math.max(1, safePage - 1)) })}`}
             aria-label="Página anterior"
             aria-disabled={safePage <= 1}
-            className={`text-sm px-3 py-2 border rounded ${safePage <= 1 ? 'pointer-events-none opacity-50' : 'bg-white hover:bg-gray-50'}`}
+            className={`text-sm px-3 py-2 border rounded ${safePage <= 1 ? 'pointer-events-none opacity-50' : 'bg-card hover:bg-muted'}`}
           >
             ← Anterior
           </Link>
-          <div className="text-xs text-gray-600">Página {safePage} de {totalPages}</div>
+          <div className="text-xs text-muted-foreground">Página {safePage} de {totalPages}</div>
           <Link
             href={`/ranking${qs({ page: String(Math.min(totalPages, safePage + 1)) })}`}
             aria-label="Próxima página"
             aria-disabled={safePage >= totalPages}
-            className={`text-sm px-3 py-2 border rounded ${safePage >= totalPages ? 'pointer-events-none opacity-50' : 'bg-white hover:bg-gray-50'}`}
+            className={`text-sm px-3 py-2 border rounded ${safePage >= totalPages ? 'pointer-events-none opacity-50' : 'bg-card hover:bg-muted'}`}
           >
             Próxima →
           </Link>
