@@ -41,8 +41,8 @@ export default function ResetPasswordPage() {
   return (
     <div>
       <div className="text-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Redefinir senha</h1>
-        <p className="mt-2 text-sm text-gray-600">Crie uma nova senha para sua conta.</p>
+        <h1 className="text-3xl font-bold text-foreground">Redefinir senha</h1>
+        <p className="mt-2 text-sm text-muted-foreground">Crie uma nova senha para sua conta.</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">

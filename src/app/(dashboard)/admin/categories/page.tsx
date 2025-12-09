@@ -34,7 +34,7 @@ export default async function AdminCategoriesPage({
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-semibold">Categorias do Oscar</h2>
-          <p className="text-sm text-gray-600">Ative/desative e edite as categorias</p>
+          <p className="text-sm text-muted-foreground">Ative/desative e edite as categorias</p>
         </div>
         <Link href="/admin/categories/new">
           <Button>

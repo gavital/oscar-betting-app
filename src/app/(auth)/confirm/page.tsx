@@ -10,7 +10,7 @@ export default function ConfirmPage() {
   const searchParams = useSearchParams()
   const email = searchParams.get('email') || ''
   const supabase = useSupabase()
-  const router = useRouter() // ✅ FIX: instanciar o hook
+  const router = useRouter()
 
   const [loading, setLoading] = useState(false)
   const [cooldown, setCooldown] = useState(false)
@@ -60,12 +60,12 @@ export default function ConfirmPage() {
             />
           </svg>
         </div>
-        <h2 className="mt-4 text-2xl font-bold text-gray-900">
+        <h2 className="mt-4 text-2xl font-bold text-foreground">
           Cadastro realizado com sucesso!
         </h2>
-        <p className="mt-2 text-sm text-gray-600">
+        <p className="mt-2 text-sm text-muted-foreground">
           Enviamos um e-mail de confirmação para{' '}
-          <span className="font-medium text-gray-900">{email}</span>. Por favor,
+          <span className="font-medium text-foreground">{email}</span>. Por favor,
           verifique sua caixa de entrada.
         </p>
       </div>

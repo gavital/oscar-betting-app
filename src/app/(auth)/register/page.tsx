@@ -68,8 +68,8 @@ export default function RegisterPage() {
   return (
     <div>
       <div className="text-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Criar Conta</h1>
-        <p className="mt-2 text-sm text-gray-600">Comece a apostar nos vencedores do Oscar!</p>
+        <h1 className="text-3xl font-bold text-foreground">Criar Conta</h1>
+        <p className="mt-2 text-sm text-muted-foreground">Comece a apostar nos vencedores do Oscar!</p>
       </div>
 
       <Form {...form}>
@@ -137,7 +137,7 @@ export default function RegisterPage() {
       </Form>
 
       <div className="mt-6 text-center">
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-muted-foreground">
           Já tem uma conta?{' '}
           <Link href="/login" className="font-medium text-purple-600 hover:text-purple-500">
             Entrar

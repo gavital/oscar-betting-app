@@ -41,7 +41,7 @@ export default async function ManageNomineesPage({
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold">{category?.name}</h2>
-          <p className="text-sm text-gray-600">{count} / {category?.max_nominees} indicados</p>
+          <p className="text-sm text-muted-foreground">{count} / {category?.max_nominees} indicados</p>
         </div>
         <Link href="/admin/nominees">
           <Button variant="outline">Voltar</Button>
@@ -57,10 +57,10 @@ export default async function ManageNomineesPage({
           <textarea
             id="bulk_text"
             name="bulk_text"
-            className="w-full border rounded p-2 h-40"
+            className="w-full border rounded p-2 h-40 bg-card text-foreground"
             placeholder="Ex:\nFilme A\nFilme B\nFilme C"
           />
-          <div className="text-sm text-gray-500">
+          <div className="text-sm text-foreground/70">
             Duplicatas serão removidas automaticamente. Linhas em branco são ignoradas.
           </div>
 
@@ -104,10 +104,10 @@ export default async function ManageNomineesPage({
                       alt={n.name}
                       width={92}   // ~ metade de w185 mantém nitidez e layout discreto
                       height={138} // proporção 2:3
-                      className="rounded border bg-gray-50 object-cover"
+                      className="rounded border bg-card object-cover"
                     />
                   ) : (
-                    <div className="w-[92px] h-[138px] rounded border bg-gray-50 grid place-items-center text-[11px] text-gray-500">
+                    <div className="w-[92px] h-[138px] rounded border bg-card grid place-items-center text-[11px] text-foreground/70">
                       Sem imagem
                     </div>
                   )}
@@ -117,7 +117,7 @@ export default async function ManageNomineesPage({
 
                     {/* Exemplo: mostrar ano do filme se existir */}
                     {(n as any)?.tmdb_data?.release_date && (
-                      <span className="text-xs text-gray-500">
+                      <span className="text-xs text-foreground/70">
                         {new Date((n as any).tmdb_data.release_date).getFullYear()}
                       </span>
                     )}
@@ -128,7 +128,7 @@ export default async function ManageNomineesPage({
                         TMDB OK
                       </span>
                     ) : (
-                      <span className="mt-1 w-fit text-xs px-2 py-1 rounded bg-gray-100 text-gray-600">
+                      <span className="mt-1 w-fit text-xs px-2 py-1 rounded bg-muted text-muted-foreground">
                         TMDB Pendente
                       </span>
                     )}

@@ -59,8 +59,8 @@ export default function ForgotPasswordPage() {
   return (
     <div>
       <div className="text-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Esqueci minha senha</h1>
-        <p className="mt-2 text-sm text-gray-600">
+        <h1 className="text-3xl font-bold text-foreground">Esqueci minha senha</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
           Informe seu e-mail para enviarmos um link de redefinição.
         </p>
       </div>
@@ -77,7 +77,7 @@ export default function ForgotPasswordPage() {
             onChange={(e) => setEmail(e.target.value)}
             placeholder="seu@email.com"
           />
-          <p id="helper-text" className="text-xs text-gray-500 mt-1">
+          <p id="helper-text" className="text-xs text-foreground/70 mt-1">
             Vamos enviar um link de redefinição para o e-mail informado.
           </p>
         </div>

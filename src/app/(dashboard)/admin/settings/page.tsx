@@ -52,7 +52,7 @@ export default async function AdminSettingsPage() {
 
       <div className="flex items-center justify-between">
         <div>
-          <div className="text-sm text-gray-700">Estado atual:</div>
+          <div className="text-sm text-foreground/80">Estado atual:</div>
           {open ? (
             <span className="inline-flex items-center text-xs bg-green-100 text-green-700 px-2 py-1 rounded">
               APOSTAS ABERTAS

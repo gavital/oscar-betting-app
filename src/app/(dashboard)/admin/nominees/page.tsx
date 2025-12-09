@@ -33,7 +33,7 @@ export default async function AdminNomineesPage() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-semibold">Gestão de Indicados</h2>
-          <p className="text-sm text-gray-600">Importe ou cadastre individualmente os indicados por categoria</p>
+          <p className="text-sm text-muted-foreground">Importe ou cadastre individualmente os indicados por categoria</p>
         </div>
         <Link href="/admin/categories">
           <Button variant="outline">Voltar para Categorias</Button>
@@ -44,13 +44,13 @@ export default async function AdminNomineesPage() {
         {categories?.map(cat => {
           const count = counts.get(cat.id) ?? 0
           return (
-            <Link key={cat.id} href={`/admin/nominees/${cat.id}`} className="border rounded p-4 hover:bg-gray-50">
+            <Link key={cat.id} href={`/admin/nominees/${cat.id}`} className="border rounded p-4 bg-card hover:bg-muted">
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="font-semibold">{cat.name}</h3>
-                  <p className="text-sm text-gray-600">{count} / {cat.max_nominees} indicados</p>
+                  <p className="text-sm text-muted-foreground">{count} / {cat.max_nominees} indicados</p>
                 </div>
-                <span className={`text-xs px-2 py-1 rounded ${cat.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
+                <span className={`text-xs px-2 py-1 rounded ${cat.is_active ? 'bg-green-100 text-green-700' : 'bg-muted text-muted-foreground'}`}>
                   {cat.is_active ? 'Ativa' : 'Inativa'}
                 </span>
               </div>

@@ -22,7 +22,7 @@ export default async function ProfilePage() {
     <div className="space-y-6">
       <div className="border-b pb-4">
         <h1 className="text-2xl font-bold">Meu Perfil</h1>
-        <p className="text-sm text-gray-600">Atualize seu nome e preferências.</p>
+        <p className="text-sm text-muted-foreground">Atualize seu nome e preferências.</p>
       </div>
 
       <ProfileForm currentName={profile?.name ?? ''} />

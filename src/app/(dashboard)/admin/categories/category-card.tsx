@@ -37,18 +37,6 @@ export function CategoryCard({ category }: { category: Category }) {
     }
   }, [state])
 
-  // const handleToggle = (checked: boolean) => {
-  //   // UI otimista
-  //   setIsActive(checked)
-  //   setPending(true)
-
-  //   // Monta FormData programaticamente (sem useRef/form)
-  //   const fd = new FormData()
-  //   fd.set('id', category.id)
-  //   fd.set('nextState', String(checked))
-  //   formAction(fd)
-  // }
-
   const checkboxId = `nextState-${category.id}`
 
   return (
@@ -59,7 +47,7 @@ export function CategoryCard({ category }: { category: Category }) {
             <CardTitle className="text-lg">{category.name}</CardTitle>
             <CardDescription>{category.max_nominees} indicados máximos</CardDescription>
           </div>
-          <div className={`h-2 w-2 rounded-full ${isActive ? 'bg-green-500' : 'bg-gray-300'}`} />
+          <div className={`h-2 w-2 rounded-full ${isActive ? 'bg-green-500' : 'bg-muted'}`} />
         </div>
       </CardHeader>
 

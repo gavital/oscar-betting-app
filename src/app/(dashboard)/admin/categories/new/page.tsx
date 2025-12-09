@@ -49,7 +49,7 @@ export default function NewCategoryPage() {
 
   return (
     <div className="space-y-6">
-      <Link href="/admin/categories" className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900">
+      <Link href="/admin/categories" className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground">
         <ArrowLeft className="mr-2 h-4 w-4" />
         Voltar para Categorias
       </Link>

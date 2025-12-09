@@ -57,7 +57,7 @@ export default async function HomePage() {
         const { data: profs } = await supabase
             .from('profiles')
             .select('id, name')
-            
+
         const nameByUser = new Map((profs ?? []).map(p => [p.id, p.name ?? null]))
         const counts = new Map<string, number>()
         for (const b of betsFull ?? []) {
@@ -127,7 +127,7 @@ export default async function HomePage() {
                             RESULTADOS PUBLICADOS
                         </span>
                     ) : (
-                        <span className="inline-flex items-center text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">
+                        <span className="inline-flex items-center text-xs bg-muted text-muted-foreground px-2 py-1 rounded">
                             RESULTADOS OCULTOS
                         </span>
                     )}
@@ -144,7 +144,7 @@ export default async function HomePage() {
                                 alt={b.name}
                                 width={300}
                                 height={450}
-                                className="rounded border object-cover"
+                                className="rounded border object-cover bg-card"
                                 priority={idx === 0}
                             />
                             <div className="absolute bottom-1 left-1 bg-black/60 text-white text-xs px-2 py-1 rounded">
@@ -157,16 +157,16 @@ export default async function HomePage() {
 
             {/* Estatísticas */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="border rounded p-4">
-                    <div className="text-sm text-gray-500">Participantes</div>
+                <div className="border rounded p-4 bg-card">
+                    <div className="text-sm text-foreground/70">Participantes</div>
                     <div className="text-2xl font-semibold">{totalUsers}</div>
                 </div>
-                <div className="border rounded p-4">
-                    <div className="text-sm text-gray-500">Apostas Registradas</div>
+                <div className="border rounded p-4 bg-card">
+                    <div className="text-sm text-foreground/70">Apostas Registradas</div>
                     <div className="text-2xl font-semibold">{totalBets}</div>
                 </div>
-                <div className="border rounded p-4">
-                    <div className="text-sm text-gray-500">Categorias Ativas</div>
+                <div className="border rounded p-4 bg-card">
+                    <div className="text-sm text-foreground/70">Categorias Ativas</div>
                     <div className="text-2xl font-semibold">{totalActiveCategories}</div>
                 </div>
             </div>
@@ -177,8 +177,8 @@ export default async function HomePage() {
                     <h2 className="text-lg font-bold">Pódio Atual</h2>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         {podium.map((p, idx) => (
-                            <div key={p.user_id} className="border rounded p-4">
-                                <div className="text-sm text-gray-500">{idx + 1}º lugar</div>
+                            <div key={p.user_id} className="border rounded p-4 bg-card">
+                                <div className="text-sm text-foreground/70">{idx + 1}º lugar</div>
                                 <div className="text-lg font-semibold">{p.name ?? p.user_id}</div>
                                 <Link href={`/ranking/${p.user_id}`} className="text-xs text-indigo-600 hover:underline">
                                     Ver Apostas
@@ -186,7 +186,7 @@ export default async function HomePage() {
                             </div>
                         ))}
                         {podium.length === 0 && (
-                            <div className="text-sm text-gray-500">Sem dados para o pódio ainda.</div>
+                            <div className="text-sm text-foreground/70">Sem dados para o pódio ainda.</div>
                         )}
                     </div>
                 </div>
@@ -194,17 +194,17 @@ export default async function HomePage() {
 
             {/* Ações rápidas */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <Link href="/bets" className="border rounded p-4 hover:bg-gray-50">
+                <Link href="/bets" className="border rounded p-4 bg-card hover:bg-muted">
                     <div className="text-lg font-semibold">Minhas Apostas</div>
-                    <div className="text-sm text-gray-600">Faça ou edite suas apostas</div>
+                    <div className="text-sm text-muted-foreground">Faça ou edite suas apostas</div>
                 </Link>
-                <Link href="/ranking" className="border rounded p-4 hover:bg-gray-50">
+                <Link href="/ranking" className="border rounded p-4 bg-card hover:bg-muted">
                     <div className="text-lg font-semibold">Ver Ranking</div>
-                    <div className="text-sm text-gray-600">Veja o pódio e pontuação</div>
+                    <div className="text-sm text-muted-foreground">Veja o pódio e pontuação</div>
                 </Link>
-                <Link href="/admin/settings" className="border rounded p-4 hover:bg-gray-50">
+                <Link href="/admin/settings" className="border rounded p-4 bg-card hover:bg-muted">
                     <div className="text-lg font-semibold">Controle de Apostas</div>
-                    <div className="text-sm text-gray-600">Admin: abrir/fechar apostas e publicar resultados</div>
+                    <div className="text-sm text-muted-foreground">Admin: abrir/fechar apostas e publicar resultados</div>
                 </Link>
             </div>
         </div>

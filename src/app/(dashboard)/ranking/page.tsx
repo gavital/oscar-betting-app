@@ -50,7 +50,7 @@ export default async function RankingPage({
       <div className="space-y-6">
         <div className="border-b pb-4">
           <h1 className="text-2xl font-bold">Ranking</h1>
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-muted-foreground">
             Resultados ainda não publicados.
           </p>
         </div>
@@ -235,8 +235,7 @@ export default async function RankingPage({
           </div>
         </div>
 
-        {/* Métricas rápidas */}
-        <div className="mt-3 text-xs text-gray-600">
+        <div className="mt-3 text-xs text-muted-foreground">
           Participantes: {totalParticipants} • Página {safePage}/{totalPages}
         </div>
       </div>

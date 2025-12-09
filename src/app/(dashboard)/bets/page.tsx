@@ -63,7 +63,7 @@ export default async function MyBetsPage() {
     <div className="space-y-6">
       <div className="border-b pb-4">
         <h1 className="text-2xl font-bold">Minhas Apostas</h1>
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-muted-foreground">
           Progresso: {completed} de {total} categorias ({progressPct}%)
         </p>
         {/* Status global de apostas */}
@@ -85,7 +85,7 @@ export default async function MyBetsPage() {
         </div>
         {/* Progress bar acessível */}
         <div
-          className="w-full bg-gray-200 h-2 rounded mt-2"
+          className="w-full bg-muted h-2 rounded mt-2"
           role="progressbar"
           aria-valuenow={progressPct}
           aria-valuemin={0}
@@ -95,7 +95,7 @@ export default async function MyBetsPage() {
           <div className="bg-blue-600 h-2 rounded" style={{ width: `${progressPct}%` }} />
         </div>
         {!betsOpen && (
-          <p className="mt-2 text-xs text-gray-600">
+          <p className="mt-2 text-xs text-muted-foreground">
             As apostas estão fechadas no momento. Você poderá visualizar suas escolhas, mas não editar.
           </p>
         )}
@@ -104,7 +104,7 @@ export default async function MyBetsPage() {
       <ul className="divide-y">
         {(categories ?? []).map(cat => {
           const done = betByCategory.has(cat.id)
-          const canNavigate = betsOpen // só navega para fazer/editar se apostas estiverem abertas
+          const canNavigate = betsOpen
           const button = (
             <Button
               variant={done ? 'outline' : 'default'}
@@ -132,7 +132,8 @@ export default async function MyBetsPage() {
               <div>{button}</div>
             )}
             </li>
-        )})}
+          )
+        })}
       </ul>
     </div>
   )
