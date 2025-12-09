@@ -28,8 +28,8 @@ export default async function AdminUnifiedPage({
   const activeTab = sp.tab ?? 'categories'
   const selectedCategoryId = sp.categoryId ?? null
 
-  // Dados de categorias
-  const { data: categories } = await supabase
+  // Categorias
+  const { data: categories, error: categoriesErr } = await supabase
     .from('categories')
     .select('id, name, max_nominees, is_active')
     .order('name')
@@ -114,7 +114,7 @@ export default async function AdminUnifiedPage({
 
   return (
     <div className="space-y-6">
-      {/* Cabeçalho e abas */}
+      {/* Header + Abas */}
       <div className="border-b pb-4">
         <h1 className="text-2xl font-bold">Painel Administrativo</h1>
         <p className="text-sm text-muted-foreground">Gerencie categorias, indicados e configurações</p>
@@ -150,7 +150,7 @@ export default async function AdminUnifiedPage({
         </div>
       </div>
 
-      {/* Conteúdo por aba */}
+      {/* Aba: Categorias */}
       {activeTab === 'categories' && (
         <section className="space-y-4">
           <div className="flex items-center justify-between">
@@ -172,14 +172,13 @@ export default async function AdminUnifiedPage({
         </section>
       )}
 
+      {/* Aba: Indicados */}
       {activeTab === 'nominees' && (
         <section className="space-y-4">
           <h2 className="text-lg font-semibold">Indicados por Categoria</h2>
           {!selectedCategoryId && (
             <>
-              <p className="text-sm text-muted-foreground">
-                Selecione uma categoria para gerenciar seus indicados.
-              </p>
+              <p className="text-sm text-muted-foreground">Selecione uma categoria para gerenciar seus indicados.</p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {(categories ?? []).map(cat => {
                   const count = counts.get(cat.id) ?? 0
@@ -337,6 +336,7 @@ export default async function AdminUnifiedPage({
         </section>
       )}
 
+      {/* Aba: Configurações */}
       {activeTab === 'settings' && (
         <section className="space-y-6">
           <h2 className="text-lg font-semibold">Configurações Globais</h2>
