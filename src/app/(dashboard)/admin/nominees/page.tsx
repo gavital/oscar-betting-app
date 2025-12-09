@@ -1,12 +1,35 @@
 // src/app/(dashboard)/admin/nominees/page.tsx
 import Link from 'next/link'
+import Image from 'next/image'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { CategoryCard } from './categories/category-card'
+import SettingsBetsForm from './settings/_components/SettingsBetsForm'
+import SettingsResultsForm from './settings/_components/SettingsResultsForm'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { ConfirmDeleteNomineeForm } from './nominees/_components/ConfirmDeleteNomineeForm'
+import WinnerSetForm from './nominees/_components/WinnerSetForm'
+import { importNominees, createNominee, updateNominee, enrichNomineeWithTMDB } from './nominees/actions'
+import { getTmdbImageUrl } from '@/lib/tmdb/client'
 
-export default async function AdminNomineesPage() {
+type AdminSearchParams = {
+  tab?: 'categories' | 'nominees' | 'settings'
+  categoryId?: string
+}
+
+export default async function AdminUnifiedPage({
+  searchParams,
+}: {
+  searchParams?: Promise<AdminSearchParams>
+}) {
   const supabase = await createServerSupabaseClient()
+  const sp = (await searchParams) ?? {}
+  const activeTab = sp.tab ?? 'categories'
+  const selectedCategoryId = sp.categoryId ?? null
 
-  const { data: categories, error: catErr } = await supabase
+  // Dados comuns
+  const { data: categories } = await supabase
     .from('categories')
     .select('id, name, max_nominees, is_active')
     .order('name')
@@ -21,43 +44,342 @@ export default async function AdminNomineesPage() {
   }
 
   // Contagem de indicados por categoria
-  const { data: nominees, error: nomErr } = await supabase
+  const { data: nomineesCountRows } = await supabase
     .from('nominees')
     .select('category_id')
 
   const counts = new Map<string, number>()
-  nominees?.forEach(n => counts.set(n.category_id, (counts.get(n.category_id) ?? 0) + 1))
+  for (const n of nomineesCountRows ?? []) {
+    counts.set(n.category_id, (counts.get(n.category_id) ?? 0) + 1)
+  }
+
+  // Settings globais
+  const { data: betsOpenSetting } = await supabase
+    .from('app_settings')
+    .select('key, value')
+    .eq('key', 'bets_open')
+    .maybeSingle()
+
+  const betsOpen =
+    betsOpenSetting?.value === true ||
+    betsOpenSetting?.value === 'true' ||
+    betsOpenSetting?.value?.toString?.() === 'true' ||
+    betsOpenSetting == null
+
+  const { data: resultsSetting } = await supabase
+    .from('app_settings')
+    .select('key, value')
+    .eq('key', 'results_published')
+    .maybeSingle()
+
+  const resultsPublished =
+    resultsSetting?.value === true ||
+    resultsSetting?.value === 'true' ||
+    resultsSetting?.value?.toString?.() === 'true' ||
+    false
+
+  // Se uma categoria foi selecionada na aba de "Indicados", carregar seus dados
+  let selectedCategory: { id: string; name: string; max_nominees: number; is_active: boolean } | null = null
+  let categoryNominees: Array<{ id: string; name: string; tmdb_data: any; is_winner: boolean }> = []
+
+  if (activeTab === 'nominees' && selectedCategoryId) {
+    const { data: cat } = await supabase
+      .from('categories')
+      .select('id, name, max_nominees, is_active')
+      .eq('id', selectedCategoryId)
+      .maybeSingle()
+
+    selectedCategory = cat ?? null
+
+    const { data: nom } = await supabase
+      .from('nominees')
+      .select('id, name, tmdb_data, is_winner')
+      .eq('category_id', selectedCategoryId)
+      .order('name')
+
+    categoryNominees = nom ?? []
+  }
+
+  // Helper de query string com tab e categoria
+  const qs = (params: Partial<AdminSearchParams>) => {
+    const merged: AdminSearchParams = {
+      tab: activeTab,
+      categoryId: selectedCategoryId ?? undefined,
+      ...params,
+    }
+    const entries = Object.entries(merged).filter(([, v]) => v && String(v).length > 0)
+    const query = new URLSearchParams(entries as any).toString()
+    return query ? `?${query}` : ''
+  }
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-semibold">Gestão de Indicados</h2>
-          <p className="text-sm text-muted-foreground">Importe ou cadastre individualmente os indicados por categoria</p>
+      {/* Cabeçalho e abas */}
+      <div className="border-b pb-4">
+        <h1 className="text-2xl font-bold">Painel Administrativo</h1>
+        <p className="text-sm text-muted-foreground">Gerencie categorias, indicados e configurações</p>
+
+        {/* Nav de abas */}
+        <div className="mt-4 flex items-center gap-2">
+          <Link href={`/admin${qs({ tab: 'categories', categoryId: undefined })}`}>
+            <button
+              aria-pressed={activeTab === 'categories'}
+              className={`border rounded px-3 py-2 text-sm ${activeTab === 'categories' ? 'bg-muted' : 'bg-card hover:bg-muted'}`}
+            >
+              Categorias
+            </button>
+          </Link>
+
+          <Link href={`/admin${qs({ tab: 'nominees' })}`}>
+            <button
+              aria-pressed={activeTab === 'nominees'}
+              className={`border rounded px-3 py-2 text-sm ${activeTab === 'nominees' ? 'bg-muted' : 'bg-card hover:bg-muted'}`}
+            >
+              Indicados
+            </button>
+          </Link>
+
+          <Link href={`/admin${qs({ tab: 'settings', categoryId: undefined })}`}>
+            <button
+              aria-pressed={activeTab === 'settings'}
+              className={`border rounded px-3 py-2 text-sm ${activeTab === 'settings' ? 'bg-muted' : 'bg-card hover:bg-muted'}`}
+            >
+              Configurações
+            </button>
+          </Link>
         </div>
-        <Link href="/admin/categories">
-          <Button variant="outline">Voltar para Categorias</Button>
-        </Link>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {categories?.map(cat => {
-          const count = counts.get(cat.id) ?? 0
-          return (
-            <Link key={cat.id} href={`/admin/nominees/${cat.id}`} className="border rounded p-4 bg-card hover:bg-muted">
+      {/* Conteúdo por aba */}
+      {activeTab === 'categories' && (
+        <section className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-semibold">Categorias do Oscar</h2>
+              <p className="text-sm text-muted-foreground">Ative/desative e edite as categorias</p>
+            </div>
+            <Link href="/admin/categories/new">
+              <Button>Nova Categoria</Button>
+            </Link>
+          </div>
+
+          {/* Grid de categorias usando CategoryCard */}
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {(categories ?? []).map((category) => (
+              <CategoryCard key={category.id} category={category} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {activeTab === 'nominees' && (
+        <section className="space-y-4">
+          <h2 className="text-lg font-semibold">Indicados por Categoria</h2>
+          {!selectedCategoryId && (
+            <>
+              <p className="text-sm text-muted-foreground">
+                Selecione uma categoria para gerenciar seus indicados.
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {(categories ?? []).map(cat => {
+                  const count = counts.get(cat.id) ?? 0
+                  return (
+                    <Link
+                      key={cat.id}
+                      href={`/admin${qs({ tab: 'nominees', categoryId: cat.id })}`}
+                      className="border rounded p-4 bg-card hover:bg-muted"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h3 className="font-semibold">{cat.name}</h3>
+                          <p className="text-sm text-muted-foreground">{count} / {cat.max_nominees} indicados</p>
+                        </div>
+                        <span className={`text-xs px-2 py-1 rounded ${cat.is_active ? 'bg-green-100 text-green-700' : 'bg-muted text-muted-foreground'}`}>
+                          {cat.is_active ? 'Ativa' : 'Inativa'}
+                        </span>
+                      </div>
+                    </Link>
+                  )
+                })}
+              </div>
+            </>
+          )}
+
+          {selectedCategoryId && selectedCategory && (
+            <div className="space-y-6">
+              {/* Cabeçalho da categoria e botão de voltar */}
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="font-semibold">{cat.name}</h3>
-                  <p className="text-sm text-muted-foreground">{count} / {cat.max_nominees} indicados</p>
+                  <h3 className="text-xl font-semibold">{selectedCategory.name}</h3>
+                  <p className="text-sm text-muted-foreground">
+                    {categoryNominees.length} / {selectedCategory.max_nominees} indicados
+                  </p>
                 </div>
-                <span className={`text-xs px-2 py-1 rounded ${cat.is_active ? 'bg-green-100 text-green-700' : 'bg-muted text-muted-foreground'}`}>
-                  {cat.is_active ? 'Ativa' : 'Inativa'}
-                </span>
+                <Link href={`/admin${qs({ tab: 'nominees', categoryId: undefined })}`}>
+                  <Button variant="outline">Voltar</Button>
+                </Link>
               </div>
-            </Link>
-          )
-        })}
-      </div>
+
+              {/* Entrada rápida */}
+              <section className="space-y-3">
+                <h4 className="text-lg font-semibold">Entrada Rápida</h4>
+                <form action={importNominees} className="space-y-3">
+                  <input type="hidden" name="category_id" value={selectedCategoryId} />
+                  <Label htmlFor="bulk_text">Cole a lista de indicados (um por linha)</Label>
+                  <textarea
+                    id="bulk_text"
+                    name="bulk_text"
+                    className="w-full border rounded p-2 h-40 bg-card text-foreground"
+                    placeholder="Ex:\nFilme A\nFilme B\nFilme C"
+                  />
+                  <div className="text-sm text-foreground/70">
+                    Duplicatas serão removidas automaticamente. Linhas em branco são ignoradas.
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input id="replace" type="checkbox" name="replace" defaultChecked />
+                    <Label htmlFor="replace" className="text-sm">Substituir os indicados existentes</Label>
+                  </div>
+                  <Button type="submit">Importar Indicados</Button>
+                </form>
+              </section>
+
+              {/* Entrada individual e lista */}
+              <section className="space-y-4">
+                <h4 className="text-lg font-semibold">Entrada Individual</h4>
+                <form action={createNominee} className="flex gap-2">
+                  <input type="hidden" name="category_id" value={selectedCategoryId} />
+                  <Input name="name" placeholder="Nome do indicado" required minLength={2} />
+                  <Button type="submit">Adicionar</Button>
+                </form>
+
+                <ul className="divide-y">
+                  {categoryNominees.map((n) => {
+                    const posterPath =
+                      (n as any)?.tmdb_data?.poster_path ??
+                      (n as any)?.tmdb_data?.profile_path ??
+                      null
+                    const posterUrl = getTmdbImageUrl(posterPath, 'list')
+
+                    return (
+                      <li key={n.id} className="flex items-center justify-between py-3">
+                        <div className="flex items-center gap-3">
+                          {posterUrl ? (
+                            <Image
+                              src={posterUrl}
+                              alt={n.name}
+                              width={92}
+                              height={138}
+                              className="rounded border bg-card object-cover"
+                            />
+                          ) : (
+                            <div className="w-[92px] h-[138px] rounded border bg-card grid place-items-center text-[11px] text-foreground/70">
+                              Sem imagem
+                            </div>
+                          )}
+
+                          <div className="flex flex-col">
+                            <span className="font-medium">{n.name}</span>
+
+                            {(n as any)?.tmdb_data?.release_date && (
+                              <span className="text-xs text-foreground/70">
+                                {new Date((n as any).tmdb_data.release_date).getFullYear()}
+                              </span>
+                            )}
+
+                            {n.tmdb_data ? (
+                              <span className="mt-1 w-fit text-xs px-2 py-1 rounded bg-green-100 text-green-700">
+                                TMDB OK
+                              </span>
+                            ) : (
+                              <span className="mt-1 w-fit text-xs px-2 py-1 rounded bg-muted text-muted-foreground">
+                                TMDB Pendente
+                              </span>
+                            )}
+
+                            {n.is_winner && (
+                              <span className="mt-1 w-fit text-xs px-2 py-1 rounded bg-purple-100 text-purple-700">
+                                Vencedor
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <form action={enrichNomineeWithTMDB} className="flex items-center gap-2">
+                            <input type="hidden" name="nominee_id" value={n.id} />
+                            <input type="hidden" name="category_id" value={selectedCategoryId} />
+                            <input type="hidden" name="type" value="movie" />
+                            <Input name="name" placeholder="Título do filme" defaultValue={n.name} className="text-sm w-56" />
+                            <Button variant="outline" className="text-sm">Buscar TMDB</Button>
+                          </form>
+
+                          <form action={updateNominee} className="flex items-center gap-2">
+                            <input type="hidden" name="id" value={n.id} />
+                            <Input name="name" defaultValue={n.name} className="text-sm w-56" />
+                            <Button variant="outline" className="text-sm">Salvar</Button>
+                          </form>
+
+                          <ConfirmDeleteNomineeForm id={n.id} />
+
+                          <WinnerSetForm
+                            categoryId={selectedCategoryId}
+                            nomineeId={n.id}
+                            disabled={!!n.is_winner}
+                          />
+                        </div>
+                      </li>
+                    )
+                  })}
+                </ul>
+              </section>
+            </div>
+          )}
+        </section>
+      )}
+
+      {activeTab === 'settings' && (
+        <section className="space-y-6">
+          <h2 className="text-lg font-semibold">Configurações Globais</h2>
+
+          {/* Estado atual das apostas */}
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-sm text-foreground/80">Estado atual:</div>
+              {betsOpen ? (
+                <span className="inline-flex items-center text-xs bg-green-100 text-green-700 px-2 py-1 rounded">
+                  APOSTAS ABERTAS
+                </span>
+              ) : (
+                <span className="inline-flex items-center text-xs bg-red-100 text-red-700 px-2 py-1 rounded">
+                  APOSTAS FECHADAS
+                </span>
+              )}
+            </div>
+
+            <SettingsBetsForm currentOpen={!!betsOpen} />
+          </div>
+
+          {/* Publicação dos resultados */}
+          <div className="border-t pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-sm text-foreground/80">Publicação dos resultados:</div>
+                {resultsPublished ? (
+                  <span className="inline-flex items-center text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded">
+                    RESULTADOS PUBLICADOS
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center text-xs bg-muted text-muted-foreground px-2 py-1 rounded">
+                    RESULTADOS OCULTOS
+                  </span>
+                )}
+              </div>
+
+              <SettingsResultsForm currentPublished={!!resultsPublished} />
+            </div>
+          </div>
+        </section>
+      )}
     </div>
   )
 }
