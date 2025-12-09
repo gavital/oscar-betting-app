@@ -112,10 +112,10 @@ export default async function BetCategoryPage({
                 alt={n.name}
                 width={185}
                 height={278}
-                className="rounded border object-cover"
+                  className="rounded border object-cover bg-card"
               />
             ) : (
-                <div className="w-[185px] h-[278px] rounded border bg-gray-50 grid place-items-center text-[12px] text-gray-500">
+                <div className="w-[185px] h-[278px] rounded border bg-card grid place-items-center text-[12px] text-foreground/70">
                   Sem imagem
                 </div>
               )}

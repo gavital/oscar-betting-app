@@ -55,8 +55,8 @@ export default function LoginPage() {
   return (
     <div>
       <div className="text-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Entrar</h1>
-        <p className="mt-2 text-sm text-gray-600">Bem de volta! Acesse sua conta.</p>
+        <h1 className="text-3xl font-bold text-foreground">Entrar</h1>
+        <p className="mt-2 text-sm text-muted-foreground">Bem de volta! Acesse sua conta.</p>
       </div>
 
       <Form {...form}>
@@ -104,7 +104,7 @@ export default function LoginPage() {
       </Form>
 
       <div className="mt-6 text-center">
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-muted-foreground">
           Não tem uma conta?{' '}
           <Link href="/register" className="font-medium text-purple-600 hover:text-purple-500">
             Criar conta

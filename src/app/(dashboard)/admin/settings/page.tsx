@@ -45,7 +45,7 @@ export default async function AdminSettingsPage() {
     <div className="space-y-6">
       <div className="border-b pb-4">
         <h1 className="text-2xl font-bold">Controle de Apostas</h1>
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-muted-foreground">
           Altere o estado global das apostas (abertas/fechadas).
         </p>
       </div>
@@ -70,13 +70,13 @@ export default async function AdminSettingsPage() {
       <div className="border-t pt-6">
         <div className="flex items-center justify-between">
           <div>
-            <div className="text-sm text-gray-700">Publicação dos resultados:</div>
+            <div className="text-sm text-foreground/80">Publicação dos resultados:</div>
             {resultsPublished ? (
               <span className="inline-flex items-center text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded">
                 RESULTADOS PUBLICADOS
               </span>
             ) : (
-              <span className="inline-flex items-center text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">
+              <span className="inline-flex items-center text-xs bg-muted text-muted-foreground px-2 py-1 rounded">
                 RESULTADOS OCULTOS
               </span>
             )}

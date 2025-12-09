@@ -71,7 +71,7 @@ export default async function UserRankingDetailsPage({
       <div className="border-b pb-4 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">{displayName}</h1>
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-muted-foreground">
             Pontuação: {score}/{total}
           </p>
         </div>
