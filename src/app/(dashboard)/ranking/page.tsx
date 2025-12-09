@@ -77,12 +77,12 @@ export default async function RankingPage({
     .from('bets')
     .select('user_id, nominee_id')
 
-  // CORREÇÃO: selecionar apenas colunas existentes em profiles
+  // Tenta carregar todos os perfis (RLS pode podar resultados)
   const { data: profiles, error: profilesErr } = await supabase
     .from('profiles')
     .select('id, name')
 
-  // Mapear nomes de usuário; se consulta falhar, manter mapa vazio
+  // Mapa id -> name (pode ficar incompleto devido a RLS)
   const nameByUser = new Map<string, string | null>()
   if (!profilesErr && Array.isArray(profiles)) {
     for (const p of profiles) {
@@ -91,8 +91,22 @@ export default async function RankingPage({
     }
   }
 
-  // Usuário atual (para destaque)
+  // Usuário atual (para destaque e correção pontual do nome)
   const { data: { user } } = await supabase.auth.getUser()
+
+  // Se o RLS podou o profile do usuário atual na consulta "all",
+  // busca pontualmente o próprio profile para garantir o nome dele.
+  if (user && (!nameByUser.has(user.id) || !nameByUser.get(user.id))) {
+    const { data: selfProfile } = await supabase
+      .from('profiles')
+      .select('id, name')
+      .eq('id', user.id)
+      .maybeSingle()
+    if (selfProfile) {
+      const nm = typeof selfProfile.name === 'string' ? selfProfile.name.trim() : null
+      nameByUser.set(selfProfile.id, nm && nm.length > 0 ? nm : null)
+    }
+  }
 
   // Agregar contagens de acertos (bets que acertaram winners)
   const counts = new Map<string, number>()
