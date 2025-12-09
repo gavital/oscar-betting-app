@@ -17,10 +17,13 @@ type SearchParams = {
 export default async function RankingPage({
   searchParams,
 }: {
-  searchParams?: SearchParams
+  // ✅ Next.js 16 entrega searchParams como Promise; devemos aguardá-lo
+  searchParams?: Promise<SearchParams>
 }) {
   const supabase = await createServerSupabaseClient()
-  const sp = searchParams ?? {}
+
+  // ✅ Desembrulhar os searchParams corretamente
+  const sp = (await searchParams) ?? {}
 
   // Estado de publicação dos resultados
   const { data: publishedSetting } = await supabase
