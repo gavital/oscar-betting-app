@@ -15,7 +15,14 @@ export default async function ProfilePage() {
     .maybeSingle()
 
   if (error) {
-    return <div className="text-sm text-red-600">Erro ao carregar perfil: {error.message}</div>
+    return (
+      <div className="space-y-3">
+        <div className="text-sm text-red-600">Erro ao carregar perfil: {error.message}</div>
+        <p className="text-xs text-muted-foreground">
+          Se o problema persistir, entre em contato com o suporte.
+        </p>
+      </div>
+    )
   }
 
   return (
