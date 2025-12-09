@@ -7,23 +7,24 @@ import { useSupabase } from '@/providers/SupabaseProvider'
 import { useRouter, usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { ThemeToggle } from '@/components/ui/ThemeToggle'
+import { AdminMenu } from '@/components/layout/AdminMenu'
 
 interface HeaderProps {
   user: any | null
+  isAdmin?: boolean
 }
 
-interface Profile {
-  id: string
-  name: string
-  role: 'user' | 'admin'
-  created_at: string
-  updated_at: string
-}
+// interface Profile {
+//   id: string
+//   name: string
+//   role: 'user' | 'admin'
+//   created_at: string
+//   updated_at: string
+// }
 
-export function Header({ user }: HeaderProps) {
+export function Header({ user, isAdmin = false }: HeaderProps) {
   const router = useRouter()
   const supabase = useSupabase()
-  const [profile, setProfile] = useState<Profile | null>(null)
   const pathname = usePathname()
   const isActive = (href: string) => pathname?.startsWith(href)
 
@@ -31,27 +32,26 @@ export function Header({ user }: HeaderProps) {
 
   useEffect(() => {
     let mounted = true
-    async function loadProfile() {
+    async function loadProfileName() {
       if (!user) {
-        setProfile(null)
+        setProfileName(null)
         return
       }
       const { data, error } = await supabase
         .from('profiles')
-        .select('*')
+        .select('name')
         .eq('id', user.id)
-        .single()
-      if (mounted) {
+        .maybeSingle()
+      if (!mounted) return
         if (error) {
-          // opcional: log para observabilidade
-          console.warn('[Header] failed to load profile', error.message)
-          setProfile(null)
+        console.warn('[Header] failed to load profile name', error.message)
+        setProfileName(null)
         } else {
-          setProfile(data as Profile)
-        }
+        const nm = (data?.name ?? '').trim()
+        setProfileName(nm.length ? nm : null)
       }
     }
-    loadProfile()
+    loadProfileName()
     return () => { mounted = false }
   }, [user, supabase])
 
@@ -75,7 +75,6 @@ export function Header({ user }: HeaderProps) {
           <Link href="/home" className="text-2xl font-bold text-purple-600">
             🏆 Oscar Betting
           </Link>
-          {/* <Link href="/'home'" className="text-sm text-gray-700 hover:underline">Home</Link> */}
 
           <nav className="flex items-center space-x-4" aria-label="Navegação principal">
             {/* Botão de tema */}
@@ -83,29 +82,18 @@ export function Header({ user }: HeaderProps) {
             
             {user ? (
               <>
-                <Link href="/home" aria-label="Home" aria-current={isActive('/home') ? 'page' : undefined}>
+                <Link href="/home" aria-current={isActive('/home') ? 'page' : undefined}>
                   <Button variant={isActive('/home') ? 'default' : 'ghost'}>Home</Button>
                 </Link>
-                <Link href="/bets" aria-label="Minhas Apostas" aria-current={isActive('/bets') ? 'page' : undefined}>
+                <Link href="/bets" aria-current={isActive('/bets') ? 'page' : undefined}>
                   <Button variant={isActive('/bets') ? 'default' : 'ghost'}>Minhas Apostas</Button>
                 </Link>
-                <Link href="/ranking" aria-label="Ranking" aria-current={isActive('/ranking') ? 'page' : undefined}>
+                <Link href="/ranking" aria-current={isActive('/ranking') ? 'page' : undefined}>
                   <Button variant={isActive('/ranking') ? 'default' : 'ghost'}>Ranking</Button>
                 </Link>
 
-                {profile?.role === 'admin' && (
-                  <>
-                    <Link href="/admin/categories" aria-label="Admin: Categorias">
-                      <Button variant="ghost">Admin: Categorias</Button>
-                    </Link>
-                    <Link href="/admin/nominees" aria-label="Admin: Indicados">
-                      <Button variant="ghost">Admin: Indicados</Button>
-                    </Link>
-                    <Link href="/admin/settings" aria-label="Admin: Controle de Apostas">
-                      <Button variant="ghost">Admin: Controle de Apostas</Button>
-                    </Link>
-                  </>
-                )}
+                {/* ✅ AdminMenu centralizado e controlado por isAdmin */}
+                {isAdmin && <AdminMenu />}
 
                 <Button onClick={handleSignOut} variant="outline" aria-label="Sair da conta">
                   Sair
@@ -115,7 +103,7 @@ export function Header({ user }: HeaderProps) {
                 <div className="flex items-center space-x-2" aria-label="Perfil do usuário">
                   <UserCircle className="h-8 w-8 text-foreground/70" aria-hidden="true" />
                   <span className="text-sm font-medium text-foreground">
-                    {profile?.name || user?.email?.split('@')[0] || 'Usuário'}
+                    {profileName ?? user?.email?.split('@')[0] ?? 'Usuário'}
                   </span>
                 </div>
               </>
