@@ -61,7 +61,7 @@ export function Header({ user }: HeaderProps) {
   }
 
   return (
-    <header className="bg-white dark:bg-background shadow-sm border-b relative">
+    <header className="bg-card shadow-sm border-b relative">
       {/* Skip link para acessibilidade */}
       <a
         href="#main-content"
@@ -114,7 +114,7 @@ export function Header({ user }: HeaderProps) {
                 {/* Avatar/Perfil */}
                 <div className="flex items-center space-x-2" aria-label="Perfil do usuário">
                   <UserCircle className="h-8 w-8 text-gray-600" aria-hidden="true" />
-                  <span className="text-sm font-medium text-gray-700">
+                  <span className="text-sm font-medium text-foreground">
                     {profile?.name || user?.email?.split('@')[0] || 'Usuário'}
                   </span>
                 </div>
