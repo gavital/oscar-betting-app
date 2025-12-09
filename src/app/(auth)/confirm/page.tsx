@@ -10,6 +10,7 @@ export default function ConfirmPage() {
   const searchParams = useSearchParams()
   const email = searchParams.get('email') || ''
   const supabase = useSupabase()
+  const router = useRouter() // ✅ FIX: instanciar o hook
 
   const [loading, setLoading] = useState(false)
   const [cooldown, setCooldown] = useState(false)
@@ -28,16 +29,16 @@ export default function ConfirmPage() {
 
       if (error) throw error
 
-      toast.success("Sucesso!", { // ALTERADO
+      toast.success('Sucesso!', {
         description: 'E-mail reenviado! Verifique sua caixa de entrada novamente.',
       })
     } catch (error) {
-      toast.error("Erro", { // ALTERADO
+      toast.error('Erro', {
         description: 'Não foi possível reenviar o e-mail.',
       })
     } finally {
       setLoading(false)
-      setTimeout(() => setCooldown(false), 30000) // 30 segundos cooldown
+      setTimeout(() => setCooldown(false), 30000) // 30 segundos de cooldown
     }
   }
 

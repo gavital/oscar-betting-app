@@ -4,7 +4,6 @@ import Link from 'next/link'
 type UserScore = {
   user_id: string
   name: string | null
-  email: string | null
   score: number
 }
 
@@ -23,7 +22,7 @@ export default async function RankingPage({
   const supabase = await createServerSupabaseClient()
   const sp = searchParams ?? {}
 
-  // Estado de publicação
+  // Estado de publicação dos resultados
   const { data: publishedSetting } = await supabase
     .from('app_settings')
     .select('key, value')
@@ -78,29 +77,27 @@ export default async function RankingPage({
     .from('bets')
     .select('user_id, nominee_id')
 
-  const { data: profiles } = await supabase
+  // CORREÇÃO: selecionar apenas colunas existentes em profiles
+  const { data: profiles, error: profilesErr } = await supabase
     .from('profiles')
-    .select('id, name, email')
+    .select('id, name')
 
-  const nameByUser = new Map((profiles ?? []).map(p => [p.id, p.name ?? null]))
-  const emailByUser = new Map((profiles ?? []).map(p => [p.id, p.email ?? null]))
-
-  // Helper de exibição: nome -> prefixo do e-mail -> user_id
-  const getDisplayName = (userId: string) => {
-    const name = nameByUser.get(userId) ?? null
-    if (name && name.trim().length > 0) return name
-    const email = emailByUser.get(userId) ?? null
-    const local = email?.split('@')[0]
-    if (local && local.trim().length > 0) return local
-    return userId
+  // Mapear nomes de usuário; se consulta falhar, manter mapa vazio
+  const nameByUser = new Map<string, string | null>()
+  if (!profilesErr && Array.isArray(profiles)) {
+    for (const p of profiles) {
+      const nm = typeof p.name === 'string' ? p.name.trim() : null
+      nameByUser.set(p.id, nm && nm.length > 0 ? nm : null)
+    }
   }
 
-  // Usuário atual (para destacar na lista)
+  // Usuário atual (para destaque)
   const { data: { user } } = await supabase.auth.getUser()
 
+  // Agregar contagens de acertos (bets que acertaram winners)
   const counts = new Map<string, number>()
   for (const b of bets ?? []) {
-    if (winnerIds.has(b.nominee_id)) {
+    if (b.user_id && winnerIds.has(b.nominee_id!)) {
       counts.set(b.user_id, (counts.get(b.user_id) ?? 0) + 1)
     }
   }
@@ -108,28 +105,31 @@ export default async function RankingPage({
   let list: UserScore[] = Array.from(counts.entries()).map(([user_id, score]) => ({
     user_id,
     // Armazena também o fallback para que busca por nome funcione melhor
-    name: nameByUser.get(user_id) ?? (emailByUser.get(user_id)?.split('@')[0] ?? null),
-    email: emailByUser.get(user_id) ?? null,
+    name: nameByUser.get(user_id) ?? null,
     score
   }))
 
   // Ordenação
   const sort = sp.sort ?? 'score_desc'
   list = list.sort((a, b) => {
+    const an = a.name ?? a.user_id
+    const bn = b.name ?? b.user_id
     switch (sort) {
-      case 'score_asc': return a.score - b.score || (a.name ?? a.user_id).localeCompare(b.name ?? b.user_id)
-      case 'name_asc': return (a.name ?? a.user_id).localeCompare(b.name ?? b.user_id) || b.score - a.score
+      case 'score_asc':
+        return a.score - b.score || an.localeCompare(bn)
+      case 'name_asc':
+        return an.localeCompare(bn) || b.score - a.score
       case 'score_desc':
-      default: return b.score - a.score || (a.name ?? a.user_id).localeCompare(b.name ?? b.user_id)
+      default:
+        return b.score - a.score || an.localeCompare(bn)
     }
   })
 
-  // Filtro (q: busca por nome ou email)
+  // Filtro (q: busca por nome)
   const q = (sp.q ?? '').toLowerCase().trim()
   if (q) {
     list = list.filter(u =>
-      (u.name ?? '').toLowerCase().includes(q) ||
-      (u.email ?? '').toLowerCase().includes(q)
+      (u.name ?? '').toLowerCase().includes(q)
     )
   }
 
@@ -145,7 +145,13 @@ export default async function RankingPage({
   const end = start + perPage
   const visible = list.slice(start, end)
 
-  // Helpers para construir query string preservando filtros e ordenação
+  // Helper de nome
+  const getDisplayName = (userId: string, name: string | null) => {
+    const n = (name ?? '').trim()
+    return n && n.length > 0 ? n : userId
+  }
+
+  // Helpers de query string preservando filtros e ordenação
   const qs = (params: Partial<SearchParams>) => {
     const merged = { q: sp.q, sort: sort, perPage: String(perPage), page: String(safePage), ...params }
     const entries = Object.entries(merged).filter(([, v]) => v && String(v).length > 0)
@@ -173,7 +179,7 @@ export default async function RankingPage({
             <input
               name="q"
               defaultValue={sp.q ?? ''}
-              placeholder="Buscar por nome ou e-mail"
+              placeholder="Buscar por nome"
               className="flex-1 border rounded px-3 py-2 text-sm"
               aria-label="Buscar participantes"
             />
@@ -212,7 +218,7 @@ export default async function RankingPage({
               {idx === 0 && <span aria-hidden="true">🥇</span>}
               {idx === 1 && <span aria-hidden="true">🥈</span>}
               {idx === 2 && <span aria-hidden="true">🥉</span>}
-              <span>{getDisplayName(p.user_id)}</span>
+              <span>{getDisplayName(p.user_id, p.name)}</span>
             </div>
             <div className="text-sm text-gray-700">Pontuação: {p.score}/{total}</div>
             <Link href={`/ranking/${p.user_id}`} className="text-xs text-indigo-600 hover:underline">Ver Apostas</Link>
@@ -237,7 +243,7 @@ export default async function RankingPage({
               const rank = start + idx + 1
               const isYou = user?.id === u.user_id
               const pct = total > 0 ? Math.round((u.score / total) * 100) : 0
-              const displayName = getDisplayName(u.user_id)
+              const displayName = getDisplayName(u.user_id, u.name)
 
               return (
             <li key={u.user_id} className="flex items-center justify-between py-2">
