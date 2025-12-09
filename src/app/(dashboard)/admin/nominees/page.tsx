@@ -28,7 +28,7 @@ export default async function AdminUnifiedPage({
   const activeTab = sp.tab ?? 'categories'
   const selectedCategoryId = sp.categoryId ?? null
 
-  // Dados comuns
+  // Dados de categorias
   const { data: categories } = await supabase
     .from('categories')
     .select('id, name, max_nominees, is_active')
