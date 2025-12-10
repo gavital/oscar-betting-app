@@ -3,7 +3,30 @@ import RSSParser from 'rss-parser';
 
 export type Candidate = { name: string };
 
-const parser = new RSSParser();
+// Adiciona headers para evitar bloqueios
+const parser = new RSSParser({
+  requestOptions: {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (compatible; OscarBot/1.0; +https://github.com/gavital/oscar-betting-app)',
+      'Accept': 'application/rss+xml, application/xml;q=0.9, */*;q=0.8',
+    },
+  },
+});
+
+// Probe simples para ignorar feeds quebrados (404/403/etc)
+async function probeFeed(url: string): Promise<boolean> {
+  try {
+    // HEAD; se o servidor não suporta, cai para GET
+    const resp = await fetch(url, { method: 'HEAD' });
+    if (!resp.ok) {
+      const g = await fetch(url, { method: 'GET' });
+      return g.ok;
+    }
+    return true;
+  } catch (_err) {
+    return false;
+  }
+}
 
 export async function fetchCandidatesFromFeeds(
   urls: string[],
@@ -13,6 +36,12 @@ export async function fetchCandidatesFromFeeds(
 
   for (const url of urls) {
     try {
+      const ok = await probeFeed(url);
+      if (!ok) {
+        console.warn(`RSS probe failed for ${url}, skipping`);
+        continue;
+      }
+
       const feed = await parser.parseURL(url);
       for (const item of feed.items ?? []) {
         const title = item.title ?? '';

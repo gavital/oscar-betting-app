@@ -48,10 +48,10 @@ export function SettingsRSSFeedsForm({
   return (
     <div className="space-y-8">
       <section className="rounded-lg border p-4">
-        <h2 className="text-lg font-semibold mb-3">Add RSS Feed</h2>
+        <h2 className="text-lg font-semibold mb-3">Adicionar RSS Feed</h2>
         <form action={onCreate} className="space-y-3">
           <div>
-            <label className="block text-sm">Category</label>
+            <label className="block text-sm">Categoria</label>
             <select
               name="categoryId"
               value={form.categoryId}
@@ -76,7 +76,7 @@ export function SettingsRSSFeedsForm({
             />
           </div>
           <div>
-            <label className="block text-sm">Keywords (comma-separated)</label>
+            <label className="block text-sm">Keywords (separados por vírgula)</label>
             <input
               name="keywords"
               value={form.keywords}
@@ -87,7 +87,7 @@ export function SettingsRSSFeedsForm({
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm">Source name (optional)</label>
+              <label className="block text-sm">Nome da fonte (opcional)</label>
               <input
                 name="source_name"
                 placeholder="Omelete"
@@ -95,7 +95,7 @@ export function SettingsRSSFeedsForm({
               />
             </div>
             <div>
-              <label className="block text-sm">Language (optional)</label>
+              <label className="block text-sm">Idioma (opcional)</label>
               <input
                 name="language"
                 placeholder="pt-BR"
@@ -107,13 +107,13 @@ export function SettingsRSSFeedsForm({
             type="submit"
             className="inline-flex items-center rounded-md bg-gray-800 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700"
           >
-            Add Feed
+            Adicionar Feed
           </button>
         </form>
       </section>
 
       <section className="rounded-lg border p-4">
-        <h2 className="text-lg font-semibold mb-3">Existing Feeds</h2>
+        <h2 className="text-lg font-semibold mb-3">Feeds Existentes</h2>
         <ul className="divide-y">
           {feeds.map(f => (
             <li key={f.id} className="py-3">
@@ -121,11 +121,11 @@ export function SettingsRSSFeedsForm({
                 <div>
                   <div className="font-medium">{f.url}</div>
                   <div className="text-xs text-gray-500">
-                    Category: {categories.find(c => c.id === f.category_id)?.name ?? f.category_id}
-                    {' • '}Enabled: {f.enabled ? 'Yes' : 'No'}
+                    Categoria: {categories.find(c => c.id === f.category_id)?.name ?? f.category_id}
+                    {' • '}Habilitado: {f.enabled ? 'Yes' : 'No'}
                     {' • '}Keywords: {(f.keywords ?? []).join(', ') || '-'}
-                    {f.source_name ? ` • Source: ${f.source_name}` : ''}
-                    {f.language ? ` • Lang: ${f.language}` : ''}
+                    {f.source_name ? ` • Fonte: ${f.source_name}` : ''}
+                    {f.language ? ` • Idioma: ${f.language}` : ''}
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
