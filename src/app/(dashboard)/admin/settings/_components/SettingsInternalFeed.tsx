@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { toast } from 'sonner';
 
 export function SettingsInternalFeed({ year }: { year: number }) {
   const [summary, setSummary] = useState<{
@@ -18,10 +19,16 @@ export function SettingsInternalFeed({ year }: { year: number }) {
   async function onUpdateNow() {
     try {
       const res = await fetch(`${feedUrl}?format=json`, { cache: 'no-store' });
+      const ct = res.headers.get('content-type') || '';
+      if (!ct.includes('application/json')) {
+        toast.error('Falha ao atualizar feed', { description: `Tipo de resposta inesperado: ${ct}` });
+        setSummary(null);
+        return;
+      }
       const data = await res.json();
       if (!data.ok) {
+        toast.error('Falha ao atualizar feed', { description: data.error || 'Erro desconhecido' });
         setSummary(null);
-        alert(`Falha: ${data.error || 'Erro desconhecido'}`);
         return;
       }
       setSummary({
@@ -31,15 +38,24 @@ export function SettingsInternalFeed({ year }: { year: number }) {
         processed: data.processed ?? [],
         skipped: data.skipped ?? [],
       });
+      toast.success('Feed atualizado', {
+        description: `Itens: ${data.summary?.itemsCount ?? 0} • Processados: ${data.summary?.processedCount ?? 0} • Ignorados: ${data.summary?.skippedCount ?? 0}`,
+      });
     } catch (err: any) {
+      toast.error('Erro de rede ao atualizar feed', { description: err?.message ?? 'unknown' });
       setSummary(null);
-      alert(`Erro de rede: ${err?.message ?? 'unknown'}`);
     }
   }
 
   function copyToClipboard() {
-    navigator.clipboard.writeText(window.location.origin + feedUrl).catch(() => {});
+    const full = typeof window === 'undefined' ? feedUrl : window.location.origin + feedUrl;
+    navigator.clipboard.writeText(full).then(
+      () => toast.success('URL copiada'),
+      () => toast.error('Não foi possível copiar a URL')
+    );
   }
+
+  const fullUrl = typeof window === 'undefined' ? feedUrl : window.location.origin + feedUrl;
 
   return (
     <div className="space-y-4">
@@ -47,7 +63,7 @@ export function SettingsInternalFeed({ year }: { year: number }) {
         <div className="space-y-2">
           <label className="block text-sm">Feed URL (RSS)</label>
           <div className="flex gap-2">
-            <Input readOnly value={typeof window === 'undefined' ? feedUrl : window.location.origin + feedUrl} />
+            <Input readOnly value={fullUrl} />
             <Button type="button" onClick={copyToClipboard}>Copiar</Button>
             <a href={feedUrl} target="_blank" rel="noreferrer">
               <Button type="button" variant="outline">Abrir</Button>

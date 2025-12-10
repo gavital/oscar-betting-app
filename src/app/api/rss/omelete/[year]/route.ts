@@ -3,13 +3,17 @@ import { NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { scrapeOmeleteArticles } from '@/lib/scrapers/omelete';
 
-export async function GET(_req: Request, { params }: { params: { year: string } }) {
+export async function GET(req: Request, ctx: { params: { year: string } } | { params: Promise<{ year: string }> }) {
   const supabase = await createServerSupabaseClient();
+
+  // Compat: alguns ambientes tratam params como Promise
+  const params = 'then' in ctx.params ? await ctx.params : ctx.params;
   const year = params.year;
 
-  const { searchParams } = new URL(req.url);
-  const format = searchParams.get('format') ?? 'rss'; // rss | json
+  const url = new URL(req.url);
+  const format = url.searchParams.get('format') ?? 'rss'; // rss | json
 
+  try {
   // lê rss_feeds habilitados e filtra domínio omelete
   const { data: feeds, error } = await supabase
     .from('rss_feeds')
@@ -90,6 +94,21 @@ export async function GET(_req: Request, { params }: { params: { year: string } 
     status: 200,
     headers: { 'Content-Type': 'application/rss+xml; charset=utf-8' },
   });
+  } catch (err: any) {
+    // Em caso de erro, devolve JSON se solicitado
+    if (format === 'json') {
+      return NextResponse.json({
+        ok: false,
+        error: err?.message ?? 'internal_error',
+      }, { status: 500 });
+    }
+
+    // RSS: retorna erro genérico em JSON (evita HTML do _error)
+    return NextResponse.json({
+      ok: false,
+      error: err?.message ?? 'internal_error',
+    }, { status: 500 });
+  }
 }
 
 function buildMinimalRss({
