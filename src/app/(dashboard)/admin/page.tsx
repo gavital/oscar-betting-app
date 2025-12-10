@@ -16,6 +16,7 @@ import { importNomineesFromRSS } from './nominees/rss/actions'
 import { SettingsRSSFeedsForm } from './settings/_components/SettingsRSSFeedsForm'
 import { setCeremonyYear } from './settings/actions'
 import { ImportFromRSSButton } from './nominees/_components/ImportFromRSSButton'
+import { SettingsInternalFeed } from './settings/_components/SettingsInternalFeed'
 
 type AdminSearchParams = {
   tab?: 'categories' | 'nominees' | 'settings'
@@ -410,6 +411,10 @@ export default async function AdminUnifiedPage({
                 />
                 <Button type="submit">Salvar</Button>
               </form>
+            </div>
+            <div className="border-t pt-6">
+              <h3 className="text-lg font-semibold">Feed Interno (Omelete)</h3>
+              <SettingsInternalFeed year={Number(ceremonyYearSetting?.value) || new Date().getFullYear()} />
             </div>
           </div>
         </section>

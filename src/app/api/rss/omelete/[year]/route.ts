@@ -7,6 +7,9 @@ export async function GET(_req: Request, { params }: { params: { year: string } 
   const supabase = await createServerSupabaseClient();
   const year = params.year;
 
+  const { searchParams } = new URL(req.url);
+  const format = searchParams.get('format') ?? 'rss'; // rss | json
+
   // lê rss_feeds habilitados e filtra domínio omelete
   const { data: feeds, error } = await supabase
     .from('rss_feeds')
@@ -14,7 +17,9 @@ export async function GET(_req: Request, { params }: { params: { year: string } 
     .eq('enabled', true);
 
   if (error) {
-    return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+    return format === 'json'
+      ? NextResponse.json({ ok: false, error: error.message }, { status: 500 })
+      : NextResponse.json({ ok: false, error: error.message }, { status: 500 });
   }
 
   const omeleteSources = (feeds ?? [])
@@ -34,21 +39,37 @@ export async function GET(_req: Request, { params }: { params: { year: string } 
 
   const { items, processed, skipped } = await scrapeOmeleteArticles(omeleteSources);
 
-  // LOGS para auditoria
+  // logs para observabilidade
   console.info(`[rss][omelete][${year}] processed=${processed.length} skipped=${skipped.length}`);
-  if (skipped.length > 0) {
-    console.warn(`[rss][omelete][${year}] skipped:`, skipped.slice(0, 5));
+
+  if (format === 'json') {
+    return NextResponse.json({
+      ok: true,
+      year,
+      summary: {
+        itemsCount: items.length,
+        processedCount: processed.length,
+        skippedCount: skipped.length,
+      },
+      processed,
+      skipped,
+      items,
+    });
   }
 
-  // Filtra por ano no título/descrição quando possível (heurística leve).
-  const yearRe = new RegExp(String(year), 'i');
-  const filtered = items.filter(it => {
-    // Se o artigo não contém ano, ainda mantemos (alguns artigos são atemporais).
-    // Você pode tornar isso estrito se preferir.
-    return true;
-  });
+  // if (skipped.length > 0) {
+  //   console.warn(`[rss][omelete][${year}] skipped:`, skipped.slice(0, 5));
+  // }
 
-  const rssItems = filtered.map(it => ({
+  // // Filtra por ano no título/descrição quando possível (heurística leve).
+  // const yearRe = new RegExp(String(year), 'i');
+  // const filtered = items.filter(it => {
+  //   // Se o artigo não contém ano, ainda mantemos (alguns artigos são atemporais).
+  //   // Você pode tornar isso estrito se preferir.
+  //   return true;
+  // });
+
+  const rssItems = items.map(it => ({
     title: `${it.category} – ${it.name} (${year})`,
     link: it.sourceUrl,
     description: `Indicado: ${it.name} • Categoria: ${it.category} • Fonte: Omelete`,
