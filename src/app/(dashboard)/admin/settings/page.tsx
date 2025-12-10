@@ -10,7 +10,7 @@ import { SettingsRSSFeedsForm } from './_components/SettingsRSSFeedsForm'
 export default async function SettingsPage() {
   const adminCheck = await requireAdmin();
   if (!adminCheck?.supabase) {
-  return (
+    return (
       <div className="p-6">
         <h1 className="text-xl font-semibold">Unauthorized</h1>
         <p>You must be an admin to access this page.</p>
@@ -37,10 +37,22 @@ export default async function SettingsPage() {
     );
   }
 
+  const { data: ceremonyYearSetting } = await supabase
+    .from('app_settings')
+    .select('key, value')
+    .eq('key', 'ceremony_year')
+    .maybeSingle();
+
   return (
     <div className="p-6 space-y-6">
       <h1 className="text-2xl font-bold">Settings</h1>
       <SettingsRSSFeedsForm categories={categories ?? []} feeds={feeds ?? []} />
+      <form action={setCeremonyYear} className="flex items-center gap-2">
+        <Label htmlFor="ceremony_year">Ano da cerimônia</Label>
+        <Input id="ceremony_year" name="ceremony_year" type="number"
+          defaultValue={Number(ceremonyYearSetting?.value) || new Date().getFullYear()} />
+        <Button type="submit">Salvar</Button>
+      </form>
     </div>
   );
 }

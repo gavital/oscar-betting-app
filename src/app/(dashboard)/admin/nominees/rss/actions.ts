@@ -27,9 +27,26 @@ export async function importNomineesFromRSS(categoryId: string) {
   }
 
   const urls = feeds.map(f => f.url);
+  const { data: ceremonyYearSetting } = await supabase
+    .from('app_settings')
+    .select('value')
+    .eq('key', 'ceremony_year')
+    .maybeSingle();
+
+  const yearKeyword = ceremonyYearSetting?.value
+    ? String(ceremonyYearSetting.value)
+    : String(new Date().getFullYear());
+
   const allKeywords = Array.from(
-    new Set((feeds.flatMap(f => f.keywords ?? []) as string[]).map(k => k.toLowerCase()))
+    new Set([
+      ...((feeds.flatMap(f => f.keywords ?? []) as string[]).map(k => k.toLowerCase())),
+      yearKeyword.toLowerCase(),
+    ])
   );
+
+  // const allKeywords = Array.from(
+  //   new Set((feeds.flatMap(f => f.keywords ?? []) as string[]).map(k => k.toLowerCase()))
+  // );
 
   // Carrega nominees existentes
   const { data: existing, error: exErr } = await supabase

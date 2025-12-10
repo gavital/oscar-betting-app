@@ -119,3 +119,23 @@ export async function deleteRssFeed(id: string) {
   revalidatePath('/admin/settings');
   return { ok: true };
 }
+
+export async function setCeremonyYear(formData: FormData) {
+  'use server';
+  const year = Number(formData.get('ceremony_year'));
+  if (!year || year < 1900) {
+    return { ok: false, error: 'INVALID_YEAR' };
+  }
+
+  const adminCheck = await requireAdmin();
+  if (!adminCheck?.supabase) return { ok: false, error: 'Unauthorized' };
+  const { supabase } = adminCheck;
+
+  const { error } = await supabase
+    .from('app_settings')
+    .upsert({ key: 'ceremony_year', value: year }, { onConflict: 'key' });
+
+  if (error) return { ok: false, error: error.message };
+  revalidatePath('/admin?tab=settings');
+  return { ok: true };
+}
