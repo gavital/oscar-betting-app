@@ -79,6 +79,12 @@ export default async function AdminUnifiedPage({
   let selectedCategory: { id: string; name: string; max_nominees: number; is_active: boolean } | null = null
   let categoryNominees: Array<{ id: string; name: string; tmdb_data: any; is_winner: boolean }> = []
 
+  async function onImportFromRSS() {
+    'use server'
+    if (!selectedCategoryId) return
+    await importNomineesFromRSS(selectedCategoryId)
+  }
+
   if (activeTab === 'nominees' && selectedCategoryId) {
     const { data: cat } = await supabase
       .from('categories')
@@ -211,9 +217,14 @@ export default async function AdminUnifiedPage({
                     {categoryNominees.length} / {selectedCategory.max_nominees} indicados
                   </p>
                 </div>
-                <Link href={`/admin${qs({ tab: 'nominees', categoryId: undefined })}`}>
-                  <Button variant="outline">Voltar</Button>
-                </Link>
+                <div className="flex items-center gap-2">
+                  <form action={onImportFromRSS}>
+                    <Button type="submit" variant="default">Import from RSS</Button>
+                  </form>
+                  <Link href={`/admin${qs({ tab: 'nominees', categoryId: undefined })}`}>
+                    <Button variant="outline">Voltar</Button>
+                  </Link>
+                </div>
               </div>
 
               {/* Entrada rápida */}
