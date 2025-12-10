@@ -49,9 +49,7 @@ export default async function NomineesCategoryPage({ params }: { params: { categ
 
   async function onImport() {
     'use server';
-    const res = await importNomineesFromRSS(categoryId);
-    // Opcional: logar resultado ou enviar para algum sistema
-    return res;
+    await importNomineesFromRSS(categoryId);
   }
 
   return (

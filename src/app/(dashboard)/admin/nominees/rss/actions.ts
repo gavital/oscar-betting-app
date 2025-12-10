@@ -45,7 +45,7 @@ export async function importNomineesFromRSS(categoryId: string) {
 
   // Varre RSS
   const candidates = await fetchCandidatesFromFeeds(urls, allKeywords);
-  const toInsert = [];
+  const toInsert: Array<{ name: string; category_id: string }> = [];
 
   for (const c of candidates) {
     const normalized = normalizeNomineeName(c.name);
