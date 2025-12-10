@@ -8,6 +8,7 @@ import { ConfirmDeleteNomineeForm } from '../_components/ConfirmDeleteNomineeFor
 import Image from 'next/image'
 import { getTmdbImageUrl } from '@/lib/tmdb/client'
 import WinnerSetForm from '../_components/WinnerSetForm'
+import { importNomineesFromRSS } from '../rss/actions';
 
 export default async function ManageNomineesPage({
   params,
