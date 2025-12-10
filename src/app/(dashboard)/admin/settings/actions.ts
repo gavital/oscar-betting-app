@@ -55,3 +55,67 @@ export async function setResultsPublished(formData: FormData): Promise<ActionRes
   revalidatePath('/bets')
   return { ok: true, data: { published } }
 }
+
+export async function createRssFeed(input: {
+  categoryId: string;
+  url: string;
+  keywords: string[];
+  source_name?: string;
+  language?: string;
+}) {
+  const adminCheck = await requireAdmin();
+  if (!adminCheck?.supabase) return { ok: false, error: 'Unauthorized' };
+  const { supabase } = adminCheck;
+
+  const { error } = await supabase.from('rss_feeds').insert({
+    category_id: input.categoryId,
+    url: input.url,
+    keywords: input.keywords ?? [],
+    source_name: input.source_name ?? null,
+    language: input.language ?? null,
+    enabled: true,
+  });
+
+  if (error) return { ok: false, error: error.message };
+  revalidatePath('/admin/settings');
+  return { ok: true };
+}
+
+export async function updateRssFeed(input: {
+  id: string;
+  url?: string;
+  keywords?: string[];
+  source_name?: string | null;
+  language?: string | null;
+  enabled?: boolean;
+}) {
+  const adminCheck = await requireAdmin();
+  if (!adminCheck?.supabase) return { ok: false, error: 'Unauthorized' };
+  const { supabase } = adminCheck;
+
+  const { error } = await supabase
+    .from('rss_feeds')
+    .update({
+      url: input.url,
+      keywords: input.keywords,
+      source_name: input.source_name,
+      language: input.language,
+      enabled: input.enabled,
+    })
+    .eq('id', input.id);
+
+  if (error) return { ok: false, error: error.message };
+  revalidatePath('/admin/settings');
+  return { ok: true };
+}
+
+export async function deleteRssFeed(id: string) {
+  const adminCheck = await requireAdmin();
+  if (!adminCheck?.supabase) return { ok: false, error: 'Unauthorized' };
+  const { supabase } = adminCheck;
+
+  const { error } = await supabase.from('rss_feeds').delete().eq('id', id);
+  if (error) return { ok: false, error: error.message };
+  revalidatePath('/admin/settings');
+  return { ok: true };
+}

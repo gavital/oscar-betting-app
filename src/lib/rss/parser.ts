@@ -3,11 +3,12 @@ import RSSParser from 'rss-parser';
 
 export type Candidate = { name: string };
 
+const parser = new RSSParser();
+
 export async function fetchCandidatesFromFeeds(
   urls: string[],
   keywords: string[] = []
 ): Promise<Candidate[]> {
-  const parser = new RSSParser();
   const results: Candidate[] = [];
 
   for (const url of urls) {
@@ -15,8 +16,9 @@ export async function fetchCandidatesFromFeeds(
       const feed = await parser.parseURL(url);
       for (const item of feed.items ?? []) {
         const title = item.title ?? '';
-        const content = `${item.contentSnippet ?? ''} ${item.content ?? ''}`.toLowerCase();
-        const text = `${title} ${content}`.toLowerCase();
+        const contentSnippet = item.contentSnippet ?? '';
+        const content = item.content ?? '';
+        const text = `${title} ${contentSnippet} ${content}`.toLowerCase();
 
         // Filtro por palavras-chave (simples)
         const matchesKeywords =
@@ -26,7 +28,7 @@ export async function fetchCandidatesFromFeeds(
 
         // Heurística: tentar extrair nomes de filmes de títulos
         // Ex.: “Oscar 2025: Indicados a Melhor Filme – Duna: Parte 2, Oppenheimer, ...”
-        const extracted = extractNamesFromText(title) ?? extractNamesFromText(content);
+        const extracted = extractNamesFromText(title) ?? [];
         for (const name of extracted) {
           if (name && name.length >= 2) {
             results.push({ name });
@@ -57,15 +59,16 @@ function extractNamesFromText(text?: string): string[] {
     .replace(/–|—|:/g, ':')
     .trim();
 
-  // exemplo: separar depois de "Indicados" e dividir por vírgula
-  const idx = cleaned.toLowerCase().indexOf('indicados');
+  // Heurística: após "Indicados" ou "Nominated" separar por vírgulas
+  const idxIndicados = cleaned.toLowerCase().indexOf('indicados');
+  const idxNominated = cleaned.toLowerCase().indexOf('nominated');
+
   let slice = cleaned;
-  if (idx >= 0) {
-    slice = cleaned.slice(idx + 'indicados'.length);
-  }
+  if (idxIndicados >= 0) slice = cleaned.slice(idxIndicados + 'indicados'.length);
+  else if (idxNominated >= 0) slice = cleaned.slice(idxNominated + 'nominated'.length);
 
   return slice
     .split(',')
-    .map(s => s.trim())
+    .map(s => s.replace(/[–—\-:]/g, ' ').trim())
     .filter(Boolean);
 }

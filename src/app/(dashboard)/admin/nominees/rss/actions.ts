@@ -3,8 +3,8 @@
 
 import { revalidatePath } from 'next/cache';
 import { requireAdmin } from '@/lib/auth/requireAdmin';
-import { normalizeNomineeName } from '@/app/(dashboard)/admin/nominees/utils';
 import { fetchCandidatesFromFeeds } from '@/lib/rss/parser';
+import { normalizeNomineeName } from '@/app/(dashboard)/admin/nominees/utils';
 import { RSS_FEEDS } from '@/config/rss-feeds';
 
 export async function importNomineesFromRSS(categoryId: string) {
@@ -14,21 +14,37 @@ export async function importNomineesFromRSS(categoryId: string) {
   }
   const { supabase } = adminCheck;
 
-  const cfg = RSS_FEEDS.find(c => c.categoryId === categoryId);
-  if (!cfg) return { ok: false, error: 'RSS config not found for category' };
+  // Carrega feeds habilitados para a categoria
+  const { data: feeds, error: feedsErr } = await supabase
+    .from('rss_feeds')
+    .select('id, url, keywords, enabled')
+    .eq('category_id', categoryId)
+    .eq('enabled', true);
 
-  // Buscar existentes para deduplicação
-  const { data: existing } = await supabase
+  if (feedsErr) return { ok: false, error: feedsErr.message };
+  if (!feeds || feeds.length === 0) {
+    return { ok: false, error: 'No enabled RSS feeds for this category' };
+  }
+
+  const urls = feeds.map(f => f.url);
+  const allKeywords = Array.from(
+    new Set((feeds.flatMap(f => f.keywords ?? []) as string[]).map(k => k.toLowerCase()))
+  );
+
+  // Carrega nominees existentes
+  const { data: existing, error: exErr } = await supabase
     .from('nominees')
     .select('id, name')
     .eq('category_id', categoryId);
+
+  if (exErr) return { ok: false, error: exErr.message };
 
   const existingSet = new Set(
     (existing ?? []).map(n => normalizeNomineeName(n.name).toLowerCase())
   );
 
-  // Varrer RSS
-  const candidates = await fetchCandidatesFromFeeds(cfg.urls, cfg.keywords ?? []);
+  // Varre RSS
+  const candidates = await fetchCandidatesFromFeeds(urls, allKeywords);
   const toInsert = [];
 
   for (const c of candidates) {

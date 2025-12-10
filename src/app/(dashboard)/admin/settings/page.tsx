@@ -4,87 +4,43 @@ import { Button } from '@/components/ui/button'
 import SettingsBetsForm from './_components/SettingsBetsForm'
 import SettingsResultsForm from './_components/SettingsResultsForm'
 import { redirect } from 'next/navigation'
+import { requireAdmin } from '@/lib/auth/requireAdmin'
+import { SettingsRSSFeedsForm } from './_components/SettingsRSSFeedsForm'
 
-export default async function AdminSettingsPage() {
-  const supabase = await createServerSupabaseClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+export default async function SettingsPage() {
+  const adminCheck = await requireAdmin();
+  if (!adminCheck?.supabase) {
+  return (
+      <div className="p-6">
+        <h1 className="text-xl font-semibold">Unauthorized</h1>
+        <p>You must be an admin to access this page.</p>
+      </div>
+    );
+  }
+  const { supabase } = adminCheck;
 
-  // Verifica admin (opcional: apenas exibir se já houver requireAdmin no layout)
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .maybeSingle()
-  const role = (profile?.role ?? 'user').toLowerCase()
-  if (role !== 'admin') redirect('/')
+  const { data: categories, error: catErr } = await supabase
+    .from('categories')
+    .select('id, name')
+    .order('name', { ascending: true });
 
-  const { data: setting } = await supabase
-    .from('app_settings')
-    .select('key, value')
-    .eq('key', 'bets_open')
-    .maybeSingle()
+  const { data: feeds, error: feedsErr } = await supabase
+    .from('rss_feeds')
+    .select('id, category_id, url, keywords, enabled, source_name, language');
 
-  const open =
-    setting?.value === true ||
-    setting?.value === 'true' ||
-    setting?.value?.toString?.() === 'true' ||
-    setting == null // fallback: aberto quando ausente// Leitura results_published
-  const { data: publishedSetting } = await supabase
-    .from('app_settings')
-    .select('key, value')
-    .eq('key', 'results_published')
-    .maybeSingle()
-  const resultsPublished =
-    publishedSetting?.value === true ||
-    publishedSetting?.value === 'true' ||
-    publishedSetting?.value?.toString?.() === 'true' ||
-    false // default: não publicado
+  if (catErr || feedsErr) {
+    return (
+      <div className="p-6">
+        <h1 className="text-xl font-semibold">Error</h1>
+        <p>{catErr?.message ?? feedsErr?.message}</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-6">
-      <div className="border-b pb-4">
-        <h1 className="text-2xl font-bold">Controle de Apostas</h1>
-        <p className="text-sm text-muted-foreground">
-          Altere o estado global das apostas (abertas/fechadas).
-        </p>
-      </div>
-
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="text-sm text-foreground/80">Estado atual:</div>
-          {open ? (
-            <span className="inline-flex items-center text-xs bg-green-100 text-green-700 px-2 py-1 rounded">
-              APOSTAS ABERTAS
-            </span>
-          ) : (
-            <span className="inline-flex items-center text-xs bg-red-100 text-red-700 px-2 py-1 rounded">
-              APOSTAS FECHADAS
-            </span>
-          )}
-        </div>
-
-        <SettingsBetsForm currentOpen={!!open} />
-      </div>
-
-      <div className="border-t pt-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="text-sm text-foreground/80">Publicação dos resultados:</div>
-            {resultsPublished ? (
-              <span className="inline-flex items-center text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded">
-                RESULTADOS PUBLICADOS
-              </span>
-            ) : (
-              <span className="inline-flex items-center text-xs bg-muted text-muted-foreground px-2 py-1 rounded">
-                RESULTADOS OCULTOS
-              </span>
-            )}
-          </div>
-
-          <SettingsResultsForm currentPublished={!!resultsPublished} />
-        </div>
-      </div>
+    <div className="p-6 space-y-6">
+      <h1 className="text-2xl font-bold">Settings</h1>
+      <SettingsRSSFeedsForm categories={categories ?? []} feeds={feeds ?? []} />
     </div>
-  )
+  );
 }
