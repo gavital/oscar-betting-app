@@ -14,23 +14,37 @@ export async function GET(req: Request, ctx: { params: { year: string } } | { pa
   const format = url.searchParams.get('format') ?? 'rss'; // rss | json
 
   try {
-  // lê rss_feeds habilitados e filtra domínio omelete
-  const { data: feeds, error } = await supabase
-    .from('rss_feeds')
-    .select('url, enabled')
-    .eq('enabled', true);
+    // lê rss_feeds habilitados e filtra domínio omelete
+    const { data: feeds, error } = await supabase
+      .from('rss_feeds')
+      .select('url, enabled')
+      .eq('enabled', true);
 
-  if (error) {
-    return format === 'json'
-      ? NextResponse.json({ ok: false, error: error.message }, { status: 500 })
-      : NextResponse.json({ ok: false, error: error.message }, { status: 500 });
-  }
+    if (error) {
+      return format === 'json'
+        ? NextResponse.json({ ok: false, error: error.message }, { status: 500 })
+        : NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+    }
 
-  const omeleteSources = (feeds ?? [])
-    .map(f => f.url)
-    .filter(u => typeof u === 'string' && /omelete\.com\.br/i.test(u));
+    let omeleteSources = (feeds ?? [])
+      .map(f => typeof f.url === 'string' ? normalizeUrl(f.url) : '')
+      .filter(u => u && /(^https?:\/\/)?(www\.)?omelete\.com\.br/i.test(u));
 
-  if (omeleteSources.length === 0) {
+    if (omeleteSources.length === 0) {
+      const { data: fallback, error: fbErr } = await supabase
+        .from('rss_feeds')
+        .select('url')
+        .eq('enabled', true)
+        .ilike('url', '%omelete.com.br%');
+
+      if (!fbErr && fallback && fallback.length > 0) {
+        omeleteSources = fallback
+          .map(f => typeof f.url === 'string' ? normalizeUrl(f.url) : '')
+          .filter(u => u);
+      }
+    }
+
+    console.info(`[rss][omelete][${year}] enabled_feeds=${(feeds ?? []).length} omelete_sources=${omeleteSources.length}`);
     return new NextResponse(buildMinimalRss({
       channel: {
         title: `Oscars ${year} – Nominees (Omelete source)`,
@@ -94,21 +108,21 @@ export async function GET(req: Request, ctx: { params: { year: string } } | { pa
     status: 200,
     headers: { 'Content-Type': 'application/rss+xml; charset=utf-8' },
   });
-  } catch (err: any) {
-    // Em caso de erro, devolve JSON se solicitado
-    if (format === 'json') {
-      return NextResponse.json({
-        ok: false,
-        error: err?.message ?? 'internal_error',
-      }, { status: 500 });
-    }
-
-    // RSS: retorna erro genérico em JSON (evita HTML do _error)
+} catch (err: any) {
+  // Em caso de erro, devolve JSON se solicitado
+  if (format === 'json') {
     return NextResponse.json({
       ok: false,
       error: err?.message ?? 'internal_error',
     }, { status: 500 });
   }
+
+  // RSS: retorna erro genérico em JSON (evita HTML do _error)
+  return NextResponse.json({
+    ok: false,
+    error: err?.message ?? 'internal_error',
+  }, { status: 500 });
+}
 }
 
 function buildMinimalRss({
