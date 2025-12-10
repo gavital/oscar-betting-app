@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { scrapeOmeleteArticles } from '@/lib/scrapers/omelete';
 import { createServerSupabaseServiceClient } from '@/lib/supabase/server-service';
+import { createServerSupabaseClient } from '@/lib/supabase/server';
 
 type CtxParams =
   | { params: { year: string } }
@@ -54,9 +55,18 @@ function normalizeUrl(url: string): string {
 }
 
 export async function GET(req: Request, ctx: CtxParams) {
-  const supabase = process.env.SUPABASE_SERVICE_ROLE_KEY
-    ? createServerSupabaseServiceClient()
-    : await createServerSupabaseClient();
+  let supabase;
+  try {
+    // Se existir SERVICE ROLE, usa service client (ignora RLS)
+    if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      supabase = createServerSupabaseServiceClient();
+    } else {
+      supabase = await createServerSupabaseClient();
+    }
+  } catch (_err) {
+    // Fallback: SSR client com cookies (precisa de sessão/autenticado)
+    supabase = await createServerSupabaseClient();
+  }
 
   // Compat: alguns ambientes tratam params como Promise
   const params = 'then' in ctx.params ? await ctx.params : ctx.params;
