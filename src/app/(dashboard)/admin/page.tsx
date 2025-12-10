@@ -12,6 +12,8 @@ import { ConfirmDeleteNomineeForm } from './nominees/_components/ConfirmDeleteNo
 import WinnerSetForm from './nominees/_components/WinnerSetForm'
 import { importNominees, createNominee, updateNominee, enrichNomineeWithTMDB } from './nominees/actions'
 import { getTmdbImageUrl } from '@/lib/tmdb/client'
+import { importNomineesFromRSS } from './nominees/rss/actions'
+import { SettingsRSSFeedsForm } from './settings/_components/SettingsRSSFeedsForm'
 
 type AdminSearchParams = {
   tab?: 'categories' | 'nominees' | 'settings'
@@ -106,6 +108,10 @@ export default async function AdminUnifiedPage({
     const query = new URLSearchParams(entries as any).toString()
     return query ? `?${query}` : ''
   }
+
+  const { data: feeds, error: feedsErr } = await supabase
+    .from('rss_feeds')
+    .select('id, category_id, url, keywords, enabled, source_name, language')
 
   return (
     <div className="space-y-6">
@@ -366,6 +372,15 @@ export default async function AdminUnifiedPage({
 
               <SettingsResultsForm currentPublished={!!resultsPublished} />
             </div>
+          </div>
+
+          <div className="border-t pt-6">
+            <h3 className="text-lg font-semibold">RSS Feeds</h3>
+            {feedsErr ? (
+              <div className="text-sm text-red-600">Erro ao carregar feeds: {feedsErr.message}</div>
+            ) : (
+              <SettingsRSSFeedsForm categories={categories ?? []} feeds={feeds ?? []} />
+            )}
           </div>
         </section>
       )}

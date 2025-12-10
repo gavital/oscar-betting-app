@@ -38,11 +38,11 @@ export default async function NomineesCategoryPage({ params }: { params: { categ
     .eq('category_id', categoryId)
     .order('name', { ascending: true });
 
-  if (error) {
+if (nomErr) {
     return (
       <div className="p-6">
         <h1 className="text-xl font-semibold">Error</h1>
-        <p>{error.message}</p>
+        <p>{nomErr.message}</p>
       </div>
     );
   }
