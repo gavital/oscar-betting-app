@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { scrapeOmeleteArticles } from '@/lib/scrapers/omelete';
 import { createServerSupabaseServiceClient } from '@/lib/supabase/server-service';
-import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { discoverOmeleteArticleUrlsByYear } from '@/lib/scrapers/omelete';
 
 type CtxParams =
   | { params: { year: string } }
@@ -127,6 +127,41 @@ export async function GET(req: Request, ctx: CtxParams) {
     // Scrape das fontes
     const { items, processed, skipped } = await scrapeOmeleteArticles(omeleteSources);
 
+    const strictYear = String(year);
+const filteredItems = items.filter(it => {
+  // Aceita somente itens cuja URL contenha /oscar-{year}/
+  try {
+    const u = new URL(it.sourceUrl);
+    return new RegExp(`/oscar-${strictYear}/`, 'i').test(u.pathname);
+  } catch {
+    return false;
+  }
+});
+
+if (format === 'json') {
+  return NextResponse.json({
+    ok: true,
+    year,
+    summary: {
+      itemsCount: filteredItems.length,
+      processedCount: processed.length,
+      skippedCount: skipped.length,
+    },
+    processed,
+    skipped,
+    items: filteredItems,
+  });
+}
+
+const rssItems = filteredItems.map(it => ({
+  title: `${it.category} – ${it.name} (${year})`,
+  link: it.sourceUrl,
+  description: `Indicado: ${it.name} • Categoria: ${it.category} • Fonte: Omelete`,
+  pubDate: new Date().toUTCString(),
+  guid: `${it.sourceUrl}#${encodeURIComponent(it.category)}#${encodeURIComponent(it.name)}`,
+}));
+
+
     // logs para observabilidade
     console.info(`[rss][omelete][${year}] processed=${processed.length} skipped=${skipped.length}`);
 
@@ -186,3 +221,34 @@ export async function GET(req: Request, ctx: CtxParams) {
     }, { status: 500 });
   }
 }
+
+// Filtra fontes configuradas do Omelete (normalização + domínio)
+let configuredSources = (feeds ?? [])
+.map(f => (typeof f.url === 'string' ? normalizeUrl(f.url) : ''))
+.filter(u => u && /(^https?:\/\/)?(www\.)?omelete\.com\.br/i.test(u));
+
+// Descoberta dinâmica de artigos por ano
+const discoveredSources = await discoverOmeleteArticleUrlsByYear(Number(year), { maxPages: 5 });
+
+// Mescla configurados + descobertos
+let omeleteSources = Array.from(new Set([ ...configuredSources, ...discoveredSources ]));
+
+// Fallback: busca no DB por ilike, caso a filtragem local não ache nada configurado
+if (omeleteSources.length === 0) {
+const { data: fallback, error: fbErr } = await supabase
+  .from('rss_feeds')
+  .select('url')
+  .eq('enabled', true)
+  .ilike('url', '%omelete.com.br%');
+
+if (!fbErr && fallback && fallback.length > 0) {
+  omeleteSources = Array.from(new Set([
+    ...omeleteSources,
+    ...fallback
+      .map(f => (typeof f.url === 'string' ? normalizeUrl(f.url) : ''))
+      .filter(u => u),
+  ]));
+}
+}
+
+console.info(`[rss][omelete][${year}] enabled_feeds=${(feeds ?? []).length} configured=${configuredSources.length} discovered=${discoveredSources.length} sources=${omeleteSources.length}`);

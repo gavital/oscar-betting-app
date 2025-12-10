@@ -170,3 +170,72 @@ export async function scrapeOmeleteArticles(urls: string[]): Promise<ScrapeRepor
 
   return { items: dedupeNominees(items), processed, skipped };
 }
+
+export async function discoverOmeleteArticleUrlsByYear(
+  year: number,
+  options: { maxPages?: number } = {}
+): Promise<string[]> {
+  const maxPages = options.maxPages ?? 5;
+  const base = `https://www.omelete.com.br/oscar-${year}`;
+  const headers = {
+    'User-Agent': 'Mozilla/5.0 (compatible; OscarBot/1.0; +https://github.com/gavital/oscar-betting-app)',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+    'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
+  };
+
+  const urls = new Set<string>();
+  const articleRe = new RegExp(`/oscar-${year}/[a-z0-9-]+`, 'i');
+
+  // varre página base e paginação simples ?page=2..N
+  for (let page = 1; page <= maxPages; page++) {
+    const pageUrl = page === 1 ? base : `${base}?page=${page}`;
+    try {
+      const resp = await fetch(pageUrl, { headers, cache: 'no-store' });
+      if (!resp.ok) {
+        console.warn(`[discover][omelete] ${pageUrl} -> HTTP ${resp.status}`);
+        continue;
+      }
+      const html = await resp.text();
+      const $ = cheerio.load(html);
+
+      // extrai anchors que apontam para artigos dentro de /oscar-{year}/slug
+      $('a[href]').each((_i, el) => {
+        const href = ($(el).attr('href') || '').trim();
+        if (!href) return;
+
+        // normaliza URL absoluta
+        const full = normalizeOmeleteUrl(href);
+        if (!full) return;
+
+        // filtra por padrão do ano
+        if (articleRe.test(full)) {
+          urls.add(full);
+        }
+      });
+
+      // se a página não tem paginação (ou pouco conteúdo), podemos encerrar cedo
+      if ($('a[href*="?page="]').length === 0 && page > 1) {
+        break;
+      }
+    } catch (err: any) {
+      console.warn(`[discover][omelete] ${pageUrl} -> ${err?.message ?? 'network_error'}`);
+    }
+  }
+
+  return Array.from(urls);
+}
+
+function normalizeOmeleteUrl(href: string): string | null {
+  // transforma links relativos em absolutos e garante https
+  try {
+    let url = href;
+    if (href.startsWith('/')) {
+      url = `https://www.omelete.com.br${href}`;
+    }
+    const u = new URL(url);
+    if (u.protocol === 'http:') u.protocol = 'https:';
+    return u.toString();
+  } catch {
+    return null;
+  }
+}
