@@ -15,6 +15,7 @@ import { getTmdbImageUrl } from '@/lib/tmdb/client'
 import { importNomineesFromRSS } from './nominees/rss/actions'
 import { SettingsRSSFeedsForm } from './settings/_components/SettingsRSSFeedsForm'
 import { setCeremonyYear } from './settings/actions'
+import { ImportFromRSSButton } from './nominees/_components/ImportFromRSSButton'
 
 type AdminSearchParams = {
   tab?: 'categories' | 'nominees' | 'settings'
@@ -225,9 +226,7 @@ export default async function AdminUnifiedPage({
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <form action={onImportFromRSS}>
-                    <Button type="submit" variant="default">Import from RSS</Button>
-                  </form>
+                  <ImportFromRSSButton categoryId={selectedCategoryId} />
                   <Link href={`/admin${qs({ tab: 'nominees', categoryId: undefined })}`}>
                     <Button variant="outline">Voltar</Button>
                   </Link>

@@ -3,6 +3,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { requireAdmin } from '@/lib/auth/requireAdmin';
+import { fetchFromFeedsDetailed } from '@/lib/rss/parser';
 import { fetchCandidatesFromFeeds } from '@/lib/rss/parser';
 import { normalizeNomineeName } from '@/app/(dashboard)/admin/nominees/utils';
 import { RSS_FEEDS } from '@/config/rss-feeds';
@@ -27,6 +28,7 @@ export async function importNomineesFromRSS(categoryId: string) {
   }
 
   const urls = feeds.map(f => f.url);
+
   const { data: ceremonyYearSetting } = await supabase
     .from('app_settings')
     .select('value')
@@ -60,8 +62,9 @@ export async function importNomineesFromRSS(categoryId: string) {
     (existing ?? []).map(n => normalizeNomineeName(n.name).toLowerCase())
   );
 
-  // Varre RSS
-  const candidates = await fetchCandidatesFromFeeds(urls, allKeywords);
+  // Varre RSS com relatório detalhado
+  const { candidates, skipped, processed } = await fetchFromFeedsDetailed(urls, allKeywords);
+
   const toInsert: Array<{ name: string; category_id: string }> = [];
 
   for (const c of candidates) {
@@ -77,13 +80,11 @@ export async function importNomineesFromRSS(categoryId: string) {
     }
   }
 
-  if (toInsert.length === 0) {
-    return { ok: true, data: { imported: 0 }, message: 'No new nominees found' };
-  }
-
+  if (toInsert.length > 0) {
   const { error: insertErr } = await supabase.from('nominees').insert(toInsert);
   if (insertErr) {
-    return { ok: false, error: insertErr.message };
+      return { ok: false, error: insertErr.message, data: { imported: 0, processed, skipped } };
+    }
   }
 
   // Opcional: enriquecer com TMDB aqui (buscar poster_path), se necessário
@@ -92,5 +93,13 @@ export async function importNomineesFromRSS(categoryId: string) {
   revalidatePath(`/admin/nominees/${categoryId}`);
   revalidatePath('/ranking');
 
-  return { ok: true, data: { imported: toInsert.length } };
+  return {
+    ok: true,
+    data: {
+      imported: toInsert.length,
+      processed,
+      skipped, // [{ url, reason, status? }]
+    },
+    message: toInsert.length === 0 ? 'No new nominees found' : undefined,
+  };
 }
