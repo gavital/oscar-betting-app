@@ -1,11 +1,13 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
-import { setBetsOpen } from './actions'
 import { Button } from '@/components/ui/button'
 import SettingsBetsForm from './_components/SettingsBetsForm'
 import SettingsResultsForm from './_components/SettingsResultsForm'
 import { redirect } from 'next/navigation'
 import { requireAdmin } from '@/lib/auth/requireAdmin'
 import { SettingsRSSFeedsForm } from './_components/SettingsRSSFeedsForm'
+import { setCeremonyYear } from './actions'
+import { Label } from '@/components/ui/label'
+import { Input } from '@/components/ui/input'
 
 export default async function SettingsPage() {
   const adminCheck = await requireAdmin();

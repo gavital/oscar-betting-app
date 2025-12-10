@@ -14,6 +14,7 @@ import { importNominees, createNominee, updateNominee, enrichNomineeWithTMDB } f
 import { getTmdbImageUrl } from '@/lib/tmdb/client'
 import { importNomineesFromRSS } from './nominees/rss/actions'
 import { SettingsRSSFeedsForm } from './settings/_components/SettingsRSSFeedsForm'
+import { setCeremonyYear } from './settings/actions'
 
 type AdminSearchParams = {
   tab?: 'categories' | 'nominees' | 'settings'
@@ -67,6 +68,12 @@ export default async function AdminUnifiedPage({
     .from('app_settings')
     .select('key, value')
     .eq('key', 'results_published')
+    .maybeSingle()
+
+  const { data: ceremonyYearSetting } = await supabase
+    .from('app_settings')
+    .select('key, value')
+    .eq('key', 'ceremony_year')
     .maybeSingle()
 
   const resultsPublished =
@@ -392,6 +399,19 @@ export default async function AdminUnifiedPage({
             ) : (
               <SettingsRSSFeedsForm categories={categories ?? []} feeds={feeds ?? []} />
             )}
+            <div className="border-t pt-6">
+              <h3 className="text-lg font-semibold">Ano da cerimônia</h3>
+              <form action={setCeremonyYear} className="flex items-center gap-2">
+                <Label htmlFor="ceremony_year">Ano</Label>
+                <Input
+                  id="ceremony_year"
+                  name="ceremony_year"
+                  type="number"
+                  defaultValue={Number(ceremonyYearSetting?.value) || new Date().getFullYear()}
+                />
+                <Button type="submit">Salvar</Button>
+              </form>
+            </div>
           </div>
         </section>
       )}
