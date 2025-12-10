@@ -2,6 +2,7 @@
 import { NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { scrapeOmeleteArticles } from '@/lib/scrapers/omelete';
+import { createServerSupabaseServiceClient } from '@/lib/supabase/server-service';
 
 type CtxParams =
   | { params: { year: string } }
@@ -53,7 +54,9 @@ function normalizeUrl(url: string): string {
 }
 
 export async function GET(req: Request, ctx: CtxParams) {
-  const supabase = await createServerSupabaseClient();
+  const supabase = process.env.SUPABASE_SERVICE_ROLE_KEY
+    ? createServerSupabaseServiceClient()
+    : await createServerSupabaseClient();
 
   // Compat: alguns ambientes tratam params como Promise
   const params = 'then' in ctx.params ? await ctx.params : ctx.params;
