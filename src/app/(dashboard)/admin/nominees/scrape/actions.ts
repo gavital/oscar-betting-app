@@ -26,10 +26,12 @@ const CATEGORY_SYNONYMS: Record<string, string[]> = {
   'melhor roteiro original': ['roteiro original'],
   'melhor roteiro adaptado': ['roteiro adaptado'],
   'melhor design de producao': ['design de producao', 'direcao de arte'],
-  'melhor maquiagem e penteado': ['maquiagem e penteado', 'maquiagem'],
-  'melhor trilha sonora': ['trilha sonora'],
+  'melhor maquiagem e penteado': ['maquiagem e penteados', 'maquiagem'],
+  'melhor trilha sonora': ['trilha sonora original'],
   'melhor cancao original': ['cancao original'],
   'melhor filme internacional': ['filme internacional'],
+  'melhor figurino': ['figurino'],
+  'melhor som': ['som'],
 };
 
 type GroupEntry = { names: string[]; metas: Record<string, any>[] };

@@ -55,6 +55,9 @@ function isProbableNomineeName(s: string): boolean {
   const bad = [
     /oscar\s+20\d{2}/i,
     /\b(lista|completa|confira|indicados|vencedores|premi(ac|ç)ão|premiação)\b/i,
+    /leia nossa crítica/i,
+    /nossa crítica/i,
+    /\bcrítica\b/i,
   ];
   if (bad.some(re => re.test(t))) return false;
 
@@ -73,7 +76,7 @@ function isProbableNomineeName(s: string): boolean {
 function extractNameFromLiText(raw: string): string {
   let t = normalizeText(raw).replace(/^[•\-–—]\s*/, '');
   // corta antes de " – ", " - ", ":" ou "("
-  const cutIdx = [ ' – ', ' - ', ':', ' (' ].reduce((acc, mark) => {
+  const cutIdx = [' – ', ' - ', ':', ' ('].reduce((acc, mark) => {
     const i = t.indexOf(mark);
     return acc === -1 || (i !== -1 && i < acc) ? i : acc;
   }, -1);
@@ -82,55 +85,118 @@ function extractNameFromLiText(raw: string): string {
 }
 
 // Extrai “name” e “film_title” de um nó <li> ou texto de bullet
-function parseLiNode($: cheerio.CheerioAPI, li: cheerio.Element): { name?: string; film_title?: string } {
+function parseLiNodeWithCategory($: cheerio.CheerioAPI, li: cheerio.Element, categoryLabel: string): { name?: string; film_title?: string } {
   // Preferir textos em <a>, <strong>, <b>
   const anchorOrStrong = $(li).find('a, strong, b').first();
   let baseText = normalizeText(anchorOrStrong.length ? anchorOrStrong.text() : $(li).text());
   baseText = baseText.replace(/^[•\-–—]\s*/, '');
+
+  // Skip ruído
+  if (/leia nossa crítica/i.test(baseText) || /\bcrítica\b/i.test(baseText)) {
+    return {};
+  }
+
+  // Música: "Título" - Filme
+  const quotedSong = baseText.match(/^"(.+?)"\s*-\s*(.+)$/);
+  if (quotedSong) {
+    return {
+      name: cleanName(quotedSong[1]),
+      film_title: cleanFilm(quotedSong[2]),
+    };
+  }
 
   // Se houver <em>/<i> com o título do filme
   const em = $(li).find('em, i').first();
   if (em.length) {
     const film = normalizeText(em.text());
     // Remover o trecho <em>/<i> do texto base, se ele estiver embutido
-    const nameOnly = normalizeText(baseText.replace(film, '')).replace(/[()]/g, '').trim();
-    const parsed = { name: cleanName(nameOnly), film_title: cleanFilm(film) };
-    logger.debug('parseLiNode(em/i)', { baseText, parsed });
-    return parsed;
+    const nameOnly = normalizeText(baseText.replace(film, '')).replace(/[()]/g, '').trim(); return {
+      name: cleanName(nameOnly),
+      film_title: cleanFilm(film),
+    };
   }
 
-  // Padrões comuns: "Nome – Filme", "Nome - Filme", "Nome: Filme", "Nome (Filme)"
-  const separators = [' – ', ' - ', ':', ' ('];
-  let namePart = baseText;
-  let filmPart: string | undefined;
-
-  for (const sep of separators) {
-    const idx = baseText.indexOf(sep);
-    if (idx !== -1) {
-      namePart = baseText.slice(0, idx).trim();
-      filmPart = baseText.slice(idx + sep.length).trim();
-      // Remove fechamento de parênteses se veio de " ("
-      filmPart = filmPart?.replace(/\)$/,'').trim();
-      break;
+  // Atuação: "Nome – Filme" ou "Nome - Filme" ou "Nome: Filme"
+  if (isActingCategory(categoryLabel)) {
+    const m = baseText.match(/^(.+?)\s*(?:–|-|:)\s*(.+)$/);
+    if (m) {
+      return {
+        name: cleanName(m[1]),
+        film_title: cleanFilm(m[2]),
+      };
     }
-  }
-
-  // Se não achou, tenta padrão "Nome (Filme)" direto
-  if (!filmPart) {
-    const paren = baseText.match(/(.+?)\s*\((.+?)\)/);
+    // Padrão "Nome (Filme)"
+    const paren = baseText.match(/^(.+?)\s*\((.+?)\)$/);
     if (paren) {
-      namePart = normalizeText(paren[1]);
-      filmPart = normalizeText(paren[2]);
+      return {
+        name: cleanName(paren[1]),
+        film_title: cleanFilm(paren[2]),
+      };
     }
+    return { name: cleanName(baseText) };
   }
 
-  const parsed = { name: cleanName(namePart), film_title: cleanFilm(filmPart) };
-  logger.debug('parseLiNode(sep/paren)', { baseText, parsed });
+  // Categorias de filme/obra: não dividir por ":" ou " - ", preservar título completo
+  if (isFilmWorkCategory(categoryLabel)) {
+    // Algumas páginas têm “Título: Subtítulo” → preservar completo
+    return { name: cleanName(baseText) };
+  }
 
-  return {
-    name: cleanName(namePart),
-    film_title: cleanFilm(filmPart),
-  };
+  // Caso genérico: tentar separar por “ – ”/“-”/“:”
+  const m = baseText.match(/^(.+?)\s*(?:–|-|:)\s*(.+)$/);
+  if (m) {
+    return {
+      name: cleanName(m[1]),
+      film_title: cleanFilm(m[2]),
+    };
+  }
+  const paren = baseText.match(/^(.+?)\s*\((.+?)\)$/);
+  if (paren) {
+    return {
+      name: cleanName(paren[1]),
+      film_title: cleanFilm(paren[2]),
+    };
+  }
+  return { name: cleanName(baseText) };
+}
+
+// Retorna o label da categoria mais específica que casa com o heading
+function findCategoryLabel(headingText: string): string | null {
+  const text = normalizeText(headingText);
+  // Ordena padrões por label mais longo (maior especificidade)
+  const ordered = [...CATEGORY_PATTERNS_PT].sort((a, b) => b.label.length - a.label.length);
+  for (const cat of ordered) {
+    if (cat.re.test(text)) return cat.label;
+  }
+  return null;
+}
+
+// Determina se categoria é de atuação (ator/atriz/coadjuvante)
+function isActingCategory(label: string): boolean {
+  const l = normalizeText(label);
+  return (
+    l.includes('melhor ator') ||
+    l.includes('melhor atriz') ||
+    l.includes('coadjuvante')
+  );
+}
+// Categoria onde os itens são filmes/obras (não dividir por “:” ou “ – ”)
+function isFilmWorkCategory(label: string): boolean {
+  const l = normalizeText(label);
+  return (
+    l.includes('roteiro') ||
+    l.includes('fotografia') ||
+    l.includes('montagem') ||
+    l.includes('figurino') ||
+    l.includes('maquiagem') ||
+    l.includes('design de producao') ||
+    l.includes('som') ||
+    l.includes('trilha sonora') ||
+    l.includes('filme de animacao') ||
+    l.includes('documentario') ||
+    l.includes('filme internacional') ||
+    l.includes('melhor filme') // inclui Melhor Filme
+  );
 }
 
 function cleanName(s?: string): string | undefined {
@@ -171,10 +237,8 @@ function parseArticleWithSelectors($: cheerio.CheerioAPI, sourceUrl: string): Sc
     const headingText = normalizeText($(el).text());
     if (!headingText) return;
 
-    const categoryMatch = CATEGORY_PATTERNS_PT.find(cat => cat.re.test(headingText));
-    if (!categoryMatch) return;
-
-    const category = categoryMatch.label;
+    const category = findCategoryLabel(headingText);
+    if (!category) return;
     logger.info('heading matched category', { headingText, category });
 
     // Região: todos os irmãos até próximo heading
@@ -191,7 +255,7 @@ function parseArticleWithSelectors($: cheerio.CheerioAPI, sourceUrl: string): Sc
     logger.debug('listsSel count', { count: listsSel.length });
 
     listsSel.each((_j, li) => {
-      const parsed = parseLiNode($, li);
+      const parsed = parseLiNodeWithCategory($, li, category);
       logger.debug('li parsed', { category, parsed });
       if (parsed.name && isProbableNomineeName(parsed.name)) {
         items.push({
@@ -202,6 +266,9 @@ function parseArticleWithSelectors($: cheerio.CheerioAPI, sourceUrl: string): Sc
         });
       }
     });
+
+    // bullets em <p>
+    const parsed = parseLiNodeWithCategory($, fakeLi, category);
 
     // 1b) Fallback: parágrafos com bullets
     region.find('p').each((_j, p) => {
@@ -296,7 +363,7 @@ export async function scrapeOmeleteArticles(urls: string[]): Promise<ScrapeRepor
 
       if (extracted.length > 0) {
         logger.info('scrape: page extracted items', { url, count: extracted.length });
-      items.push(...extracted);
+        items.push(...extracted);
       } else {
         logger.warn('scrape: no items extracted for page', { url });
       }
@@ -314,7 +381,7 @@ export async function scrapeOmeleteArticles(urls: string[]): Promise<ScrapeRepor
     skipped: result.skipped.length,
     items: result.items.length,
   });
-  
+
   return { items: dedupeNominees(items), processed, skipped };
 }
 
