@@ -171,7 +171,7 @@ function findCategoryLabel(headingText: string): string | null {
 
 // Determina se categoria é de atuação (ator/atriz/coadjuvante)
 function isActingCategory(label: string): boolean {
-  const l = normalizeText(label);
+  const l = normalizeText(label).toLowerCase();
   return (
     l.includes('melhor ator') ||
     l.includes('melhor atriz') ||
@@ -180,7 +180,7 @@ function isActingCategory(label: string): boolean {
 }
 // Categoria onde os itens são filmes/obras (não dividir por “:” ou “ – ”)
 function isFilmWorkCategory(label: string): boolean {
-  const l = normalizeText(label);
+  const l = normalizeText(label).toLowerCase();
   return (
     l.includes('roteiro') ||
     l.includes('fotografia') ||
@@ -339,12 +339,6 @@ async function fetchWithRetry(url: string, init: RequestInit, retries = 1) {
   }
 }
 
-// Uso dentro de scrapeOmeleteArticles:
-const resp = await fetchWithRetry(url, {
-  headers: { /* ... */ },
-  cache: 'no-store',
-}, 1);
-
 // Scraper principal
 export async function scrapeOmeleteArticles(urls: string[]): Promise<ScrapeReport> {
   const processed: string[] = [];
@@ -404,7 +398,7 @@ export async function scrapeOmeleteArticles(urls: string[]): Promise<ScrapeRepor
     items: result.items.length,
   });
 
-  return { items: dedupeNominees(items), processed, skipped };
+  return result;
 }
 
 function dedupeNominees(items: ScrapedNominee[]): ScrapedNominee[] {
