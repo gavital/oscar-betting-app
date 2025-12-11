@@ -92,15 +92,19 @@ function parseLiNodeWithCategory(
   const anchorOrStrong = $(li).find('a, strong, b').first();
   let baseText = normalizeText(anchorOrStrong.length ? anchorOrStrong.text() : $(li).text());
 
-  // Normaliza bullets no início
+  // 1) Sanitização
+  // Remover bullets no início
   baseText = baseText.replace(/^[•\-–—]\s*/, '');
 
   // Remove qualquer parêntese que contenha a palavra "crítica"
   // Ex.: "(Leia nossa crítica)" ou variações
   baseText = baseText.replace(/\([^)]*crítica[^)]*\)/gi, '').trim();
-
-  // Remove sufixos explícitos " - Leia nossa crítica" ou variações com dash
+  // Remover sufixo " - Leia nossa crítica" ou variações com dash
   baseText = baseText.replace(/\s*(?:–|—|-)\s*Leia nossa crítica/gi, '').trim();
+  // Normalizar NBSP para espaço e dashes para hífen simples
+  baseText = baseText.replace(/\u00A0/g, ' ').replace(/[–—]/g, '-');
+  // Colapsar espaços múltiplos
+  baseText = baseText.replace(/\s+/g, ' ').trim();
 
   // Filtro de ruído após sanitização
   if (/leia nossa crítica/i.test(baseText) || /\bcrítica\b/i.test(baseText)) {
@@ -120,9 +124,9 @@ function parseLiNodeWithCategory(
 
   // Se houver <em>/<i> com o título do filme
   const em = $(li).find('em, i').first();
-  if (em.length) {
-    const film = normalizeText(em.text());
-    // Remover o trecho <em>/<i> do texto base, se ele estiver embutido
+  const emText = em.length ? normalizeText(em.text()) : '';
+  if (em.length && emText.length >= 2 && !/crítica/i.test(emText)) {
+    const film = emText;
     const nameOnly = normalizeText(baseText.replace(film, '')).replace(/[()]/g, '').trim();
     const parsed = {
       name: cleanName(nameOnly),
@@ -132,12 +136,13 @@ function parseLiNodeWithCategory(
     return parsed;
   }
 
-  // Definição ampla de separadores (– em dash, — em dash, - hyphen, : colon)
-  const sepPattern = /(?:–|—|-|:)/;
+  // // Definição ampla de separadores (– em dash, — em dash, - hyphen, : colon)
+  // const sepPattern = /(?:–|—|-|:)/;
 
-  // Atuação: tentar separar por "Nome SEP Filme"
+  // // Atuação: tentar separar por "Nome SEP Filme"
   if (isActingCategory(categoryLabel)) {
-    const m = baseText.match(/^(.+?)\s*(?:–|—|-|:)\s*(.+)$/);
+    // split por primeiro hífen/colon após normalização
+    const m = baseText.match(/^(.+?)\s*-\s*(.+)$/) || baseText.match(/^(.+?)\s*:\s*(.+)$/);
     if (m) {
       const parsed = {
         name: cleanName(m[1]),
@@ -170,8 +175,8 @@ function parseLiNodeWithCategory(
     return parsed;
   }
 
-  // Caso genérico: tentar separar por “ – ”/“-”/“:”
-  const m = baseText.match(/^(.+?)\s*(?:–|—|-|:)\s*(.+)$/);
+  // 6) Fallback genérico
+  const m = baseText.match(/^(.+?)\s*-\s*(.+)$/) || baseText.match(/^(.+?)\s*:\s*(.+)$/);
   if (m) {
     const parsed = {
       name: cleanName(m[1]),
