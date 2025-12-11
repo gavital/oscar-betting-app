@@ -252,7 +252,7 @@ function parseArticleWithSelectors($: cheerio.CheerioAPI, sourceUrl: string): Sc
 
     logger.debug('listsSel count', { count: listsSel.length });
 
-      // <li> de listas
+    // <li> de listas
     listsSel.each((_j, li) => {
       const parsed = parseLiNodeWithCategory($, li, category);
       logger.debug('li parsed', { category, parsed });
@@ -267,35 +267,34 @@ function parseArticleWithSelectors($: cheerio.CheerioAPI, sourceUrl: string): Sc
     });
 
     // bullets em <p>
-    const parsed = parseLiNodeWithCategory($, fakeLi, category);
 
     // 1b) Fallback: parágrafos com bullets
     region.find('p').each((_j, p) => {
       const raw = normalizeText($(p).text());
       if (/^[•\-–—]\s*/.test(raw)) {
-          try {
-            const $liCtx = cheerio.load(`<li>${raw}</li>`);
-            const liEl = $liCtx('li')[0];
-            if (!liEl) return;
-            const parsed = parseLiNodeWithCategory($, liEl, category);
-        logger.debug('p bullet parsed', { category, parsed });
-        if (parsed.name && isProbableNomineeName(parsed.name)) {
-          items.push({
-            category,
-            name: parsed.name,
-            sourceUrl,
-            meta: parsed.film_title ? { film_title: parsed.film_title } : undefined,
-          });
-            }
-          } catch (err: any) {
-            logger.warn('bullet parse error', { err: err?.message });
+        try {
+          const $liCtx = cheerio.load(`<li>${raw}</li>`);
+          const liEl = $liCtx('li')[0];
+          if (!liEl) return;
+          const parsed = parseLiNodeWithCategory($, liEl, category);
+          logger.debug('p bullet parsed', { category, parsed });
+          if (parsed.name && isProbableNomineeName(parsed.name)) {
+            items.push({
+              category,
+              name: parsed.name,
+              sourceUrl,
+              meta: parsed.film_title ? { film_title: parsed.film_title } : undefined,
+            });
+          }
+        } catch (err: any) {
+          logger.warn('bullet parse error', { err: err?.message });
         }
       }
     });
 
     // 1c) Fallback: elementos com role=listitem (acessibilidade)
     region.find('[role="listitem"]').each((_j, li) => {
-        const parsed = parseLiNodeWithCategory($, li, category);
+      const parsed = parseLiNodeWithCategory($, li, category);
       logger.debug('aria listitem parsed', { category, parsed });
       if (parsed.name && isProbableNomineeName(parsed.name)) {
         items.push({
@@ -313,7 +312,7 @@ function parseArticleWithSelectors($: cheerio.CheerioAPI, sourceUrl: string): Sc
   // 2) Fallback global: quando não há headings “categoria”, tentar listas globais
   if (items.length === 0) {
     root.find('ul > li, ol > li').each((_j, li) => {
-        const parsed = parseLiNodeWithCategory($, li, 'Indefinida');
+      const parsed = parseLiNodeWithCategory($, li, 'Indefinida');
       if (parsed.name && isProbableNomineeName(parsed.name)) {
         items.push({
           category: 'Indefinida',
@@ -328,6 +327,24 @@ function parseArticleWithSelectors($: cheerio.CheerioAPI, sourceUrl: string): Sc
   return dedupeNominees(items);
 }
 
+async function fetchWithRetry(url: string, init: RequestInit, retries = 1) {
+  try {
+    return await fetch(url, init);
+  } catch (err: any) {
+    if (retries > 0 && (err?.code === 'ECONNRESET' || err?.message === 'aborted')) {
+      await new Promise(r => setTimeout(r, 300));
+      return fetchWithRetry(url, init, retries - 1);
+    }
+    throw err;
+  }
+}
+
+// Uso dentro de scrapeOmeleteArticles:
+const resp = await fetchWithRetry(url, {
+  headers: { /* ... */ },
+  cache: 'no-store',
+}, 1);
+
 // Scraper principal
 export async function scrapeOmeleteArticles(urls: string[]): Promise<ScrapeReport> {
   const processed: string[] = [];
@@ -337,14 +354,15 @@ export async function scrapeOmeleteArticles(urls: string[]): Promise<ScrapeRepor
   for (const url of urls) {
     try {
       logger.info('scrape: fetch start', { url });
-      const resp = await fetch(url, {
+      const resp = await fetchWithRetry(url, {
         headers: {
           'User-Agent': 'Mozilla/5.0 (compatible; OscarBot/1.0; +https://github.com/gavital/oscar-betting-app)',
           'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
           'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
         },
         cache: 'no-store',
-      });
+      }, 1);
+
 
       if (!resp.ok) {
         logger.warn('scrape: HTTP not OK', { url, status: resp.status });
