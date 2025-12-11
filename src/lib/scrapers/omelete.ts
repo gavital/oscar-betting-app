@@ -191,6 +191,22 @@ export async function scrapeOmeleteArticles(urls: string[]): Promise<ScrapeRepor
   return { items: dedupeNominees(items), processed, skipped };
 }
 
+function dedupeNominees(items: ScrapedNominee[]): ScrapedNominee[] {
+  const seen = new Set<string>();
+  const out: ScrapedNominee[] = [];
+  for (const it of items) {
+    // chave: categoria + nome (case-insensitive, trimmed)
+    const key =
+      (it.category ?? '').toLowerCase().trim() +
+      '::' +
+      (it.name ?? '').toLowerCase().trim();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(it);
+  }
+  return out;
+}
+
 // Heurística (mantida como fallback)
 function parseArticleHeuristic($: cheerio.CheerioAPI, sourceUrl: string): ScrapedNominee[] {
   const textBlocks: string[] = [];
