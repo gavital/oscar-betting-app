@@ -89,36 +89,44 @@ function parseLiNodeWithCategory(
   li: cheerio.Element,
   categoryLabel: string
 ): { name?: string; film_title?: string } {
-  const anchorOrStrong = $(li).find('a, strong, b').first();
-  let baseText = normalizeText(anchorOrStrong.length ? anchorOrStrong.text() : $(li).text());
+  // 0) Cria uma cópia limpa do LI e remove anchors de crítica
+  const liHtml = $(li).html() ?? '';
+  const $clean = cheerio.load(liHtml);
 
-  // 1) Sanitização
-  // Remover bullets no início
-  baseText = baseText.replace(/^[•\-–—]\s*/, '');
+  // Remove <a> que contenham "crítica" (ex.: "Leia nossa crítica")
+  $clean('a').each((_i, a) => {
+    const txt = normalizeText($clean(a).text());
+    if (/crítica/i.test(txt)) {
+      $clean(a).remove();
+    }
+  });
 
-  // Remove qualquer parêntese que contenha a palavra "crítica"
-  // Ex.: "(Leia nossa crítica)" ou variações
-  baseText = baseText.replace(/\([^)]*crítica[^)]*\)/gi, '').trim();
-  // Remover sufixo " - Leia nossa crítica" ou variações com dash
-  baseText = baseText.replace(/\s*(?:–|—|-)\s*Leia nossa crítica/gi, '').trim();
-  // Normalizar NBSP para espaço e dashes para hífen simples
-  baseText = baseText.replace(/\u00A0/g, ' ').replace(/[–—]/g, '-');
-  // Colapsar espaços múltiplos
-  baseText = baseText.replace(/\s+/g, ' ').trim();
+  // 1) Gera baseText do LI inteiro já sem links de crítica
+  let baseText = normalizeText($clean.root().text());
 
-  // Filtro de ruído após sanitização
-  if (/leia nossa crítica/i.test(baseText) || /\bcrítica\b/i.test(baseText)) {
+  // Sanitização adicional: remove bullets, parênteses de crítica, NBSP, dashes e excesso de espaços
+  baseText = baseText
+    .replace(/^[•\-–—]\s*/, '')                 // bullets no início
+    .replace(/\([^)]*crítica[^)]*\)/gi, '')     // remove (…crítica…)
+    .replace(/\u00A0/g, ' ')                    // NBSP -> espaço
+    .replace(/[–—]/g, '-')                      // en/em dash -> hífen
+    .replace(/\s+/g, ' ')                       // colapsa espaços
+    .trim();
+
+  // 2) Filtro de ruído após sanitização
+  if (!baseText || /leia nossa crítica/i.test(baseText) || /\bcrítica\b/i.test(baseText)) {
+    logger.debug('li parsed empty (noise)', { category: categoryLabel, baseText });
     return {};
   }
 
-  // Música: "Título" - Filme
-  const quotedSong = baseText.match(/^"(.+?)"\s*(?:–|—|-)\s*(.+)$/);
+  // 3) Música: "Título" - Filme
+  const quotedSong = baseText.match(/^"(.+?)"\s*-\s*(.+)$/);
   if (quotedSong) {
     const parsed = {
       name: cleanName(quotedSong[1]),
       film_title: cleanFilm(quotedSong[2]),
     };
-    logger.debug('parseLiNode(song)', { baseText, parsed });
+    logger.debug('parseLiNode(song)', { category: categoryLabel, baseText, parsed });
     return parsed;
   }
 
@@ -126,13 +134,13 @@ function parseLiNodeWithCategory(
   const em = $(li).find('em, i').first();
   const emText = em.length ? normalizeText(em.text()) : '';
   if (em.length && emText.length >= 2 && !/crítica/i.test(emText)) {
-    const film = emText;
-    const nameOnly = normalizeText(baseText.replace(film, '')).replace(/[()]/g, '').trim();
+    // Remove o trecho do filme do baseText para obter só o nome
+    const nameOnly = normalizeText(baseText.replace(emText, '')).replace(/[()]/g, '').trim();
     const parsed = {
       name: cleanName(nameOnly),
-      film_title: cleanFilm(film),
+      film_title: cleanFilm(emText),
     };
-    logger.debug('parseLiNode(em/i)', { baseText, parsed });
+    logger.debug('parseLiNode(em/i)', { category: categoryLabel, baseText, parsed });
     return parsed;
   }
 
@@ -148,7 +156,7 @@ function parseLiNodeWithCategory(
         name: cleanName(m[1]),
         film_title: cleanFilm(m[2]),
       };
-      logger.debug('parseLiNode(acting sep)', { baseText, parsed });
+      logger.debug('parseLiNode(acting sep)', { category: categoryLabel, baseText, parsed });
       return parsed;
     }
     // Padrão "Nome (Filme)"
@@ -158,20 +166,19 @@ function parseLiNodeWithCategory(
         name: cleanName(paren[1]),
         film_title: cleanFilm(paren[2]),
       };
-      logger.debug('parseLiNode(acting paren)', { baseText, parsed });
+      logger.debug('parseLiNode(acting paren)', { category: categoryLabel, baseText, parsed });
       return parsed;
     }
     const parsed = { name: cleanName(baseText) };
-    logger.debug('parseLiNode(acting fallback)', { baseText, parsed });
+    logger.debug('parseLiNode(acting fallback)', { category: categoryLabel, baseText, parsed });
     return parsed;
   }
 
   // Categorias de filme/obra: manter título completo como name (não dividir)
   if (isFilmWorkCategory(categoryLabel)) {
-    // Remover aspas e normalizar
-    let filmOnly = baseText.replace(/[“”"']/g, '').trim();
+    const filmOnly = baseText.replace(/[“”"']/g, '').trim();
     const parsed = { name: cleanName(filmOnly) };
-    logger.debug('parseLiNode(non-acting)', { baseText, parsed });
+    logger.debug('parseLiNode(non-acting)', { category: categoryLabel, baseText, parsed });
     return parsed;
   }
 
@@ -182,7 +189,7 @@ function parseLiNodeWithCategory(
       name: cleanName(m[1]),
       film_title: cleanFilm(m[2]),
     };
-    logger.debug('parseLiNode(generic sep)', { baseText, parsed });
+    logger.debug('parseLiNode(generic sep)', { category: categoryLabel, baseText, parsed });
     return parsed;
   }
   const paren = baseText.match(/^(.+?)\s*\((.+?)\)$/);
@@ -191,12 +198,12 @@ function parseLiNodeWithCategory(
       name: cleanName(paren[1]),
       film_title: cleanFilm(paren[2]),
     };
-    logger.debug('parseLiNode(generic paren)', { baseText, parsed });
+    logger.debug('parseLiNode(generic paren)', { category: categoryLabel, baseText, parsed });
     return parsed;
   }
 
   const parsed = { name: cleanName(baseText) };
-  logger.debug('parseLiNode(generic fallback)', { baseText, parsed });
+  logger.debug('parseLiNode(generic fallback)', { category: categoryLabel, baseText, parsed });
   return parsed;
 }
 
