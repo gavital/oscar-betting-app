@@ -93,7 +93,7 @@ export default async function AdminUnifiedPage({
 
     const { data: nom } = await supabase
       .from('nominees')
-      .select('id, name, tmdb_data, is_winner')
+      .select('id, name, meta, tmdb_data, is_winner')
       .eq('category_id', selectedCategoryId)
       .order('name')
 
@@ -278,6 +278,12 @@ export default async function AdminUnifiedPage({
 
                           <div className="flex flex-col">
                             <span className="font-medium">{n.name}</span>
+
+                            {(n as any)?.meta?.film_title && (
+                              <span className="text-xs text-foreground/70">
+                                Filme: {(n as any).meta.film_title}
+                              </span>
+                            )}
 
                             {(n as any)?.tmdb_data?.release_date && (
                               <span className="text-xs text-foreground/70">
