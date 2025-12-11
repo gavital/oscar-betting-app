@@ -56,10 +56,9 @@ export async function setResultsPublished(formData: FormData): Promise<ActionRes
   return { ok: true, data: { published } }
 }
 
-export async function createRssFeed(input: {
-  categoryId: string;
+export async function createScrapeSource(input: {
   url: string;
-  keywords: string[];
+  keywords?: string[];
   source_name?: string;
   language?: string;
 }) {
@@ -67,9 +66,8 @@ export async function createRssFeed(input: {
   if (!adminCheck?.supabase) return { ok: false, error: 'Unauthorized' };
   const { supabase } = adminCheck;
 
-  const { error } = await supabase.from('rss_feeds').insert({
-    category_id: input.categoryId,
-    url: input.url,
+  const { error } = await supabase.from('scrape_sources').insert({
+    url: input.url.trim(),
     keywords: input.keywords ?? [],
     source_name: input.source_name ?? null,
     language: input.language ?? null,
@@ -77,11 +75,11 @@ export async function createRssFeed(input: {
   });
 
   if (error) return { ok: false, error: error.message };
-  revalidatePath('/admin/settings');
+  revalidatePath('/admin');
   return { ok: true };
 }
 
-export async function updateRssFeed(input: {
+export async function updateScrapeSource(input: {
   id: string;
   url?: string;
   keywords?: string[];
@@ -94,9 +92,9 @@ export async function updateRssFeed(input: {
   const { supabase } = adminCheck;
 
   const { error } = await supabase
-    .from('rss_feeds')
+    .from('scrape_sources')
     .update({
-      url: input.url,
+      url: input.url?.trim(),
       keywords: input.keywords,
       source_name: input.source_name,
       language: input.language,
@@ -105,36 +103,16 @@ export async function updateRssFeed(input: {
     .eq('id', input.id);
 
   if (error) return { ok: false, error: error.message };
-  revalidatePath('/admin/settings');
+  revalidatePath('/admin');
   return { ok: true };
 }
 
-export async function deleteRssFeed(id: string) {
+export async function deleteScrapeSource(id: string) {
   const adminCheck = await requireAdmin();
   if (!adminCheck?.supabase) return { ok: false, error: 'Unauthorized' };
   const { supabase } = adminCheck;
 
-  const { error } = await supabase.from('rss_feeds').delete().eq('id', id);
-  if (error) return { ok: false, error: error.message };
-  revalidatePath('/admin/settings');
-  return { ok: true };
-}
-
-export async function setCeremonyYear(formData: FormData) {
-  'use server';
-  const year = Number(formData.get('ceremony_year'));
-  if (!year || year < 1900) {
-    return { ok: false, error: 'INVALID_YEAR' };
-  }
-
-  const adminCheck = await requireAdmin();
-  if (!adminCheck?.supabase) return { ok: false, error: 'Unauthorized' };
-  const { supabase } = adminCheck;
-
-  const { error } = await supabase
-    .from('app_settings')
-    .upsert({ key: 'ceremony_year', value: year }, { onConflict: 'key' });
-
+  const { error } = await supabase.from('scrape_sources').delete().eq('id', id);
   if (error) return { ok: false, error: error.message };
   
     // Revalidar a página sem querystring para garantir refresh
