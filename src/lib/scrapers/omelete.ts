@@ -1,4 +1,5 @@
 import * as cheerio from 'cheerio';
+import { logger } from '@/lib/logger';
 
 export type ScrapedNominee = {
   category: string;     // ex.: "Melhor Filme"
@@ -93,10 +94,9 @@ function parseLiNode($: cheerio.CheerioAPI, li: cheerio.Element): { name?: strin
     const film = normalizeText(em.text());
     // Remover o trecho <em>/<i> do texto base, se ele estiver embutido
     const nameOnly = normalizeText(baseText.replace(film, '')).replace(/[()]/g, '').trim();
-    return {
-      name: cleanName(nameOnly),
-      film_title: film || undefined,
-    };
+    const parsed = { name: cleanName(nameOnly), film_title: cleanFilm(film) };
+    logger.debug('parseLiNode(em/i)', { baseText, parsed });
+    return parsed;
   }
 
   // Padrões comuns: "Nome – Filme", "Nome - Filme", "Nome: Filme", "Nome (Filme)"
@@ -123,6 +123,9 @@ function parseLiNode($: cheerio.CheerioAPI, li: cheerio.Element): { name?: strin
       filmPart = normalizeText(paren[2]);
     }
   }
+
+  const parsed = { name: cleanName(namePart), film_title: cleanFilm(filmPart) };
+  logger.debug('parseLiNode(sep/paren)', { baseText, parsed });
 
   return {
     name: cleanName(namePart),
@@ -156,7 +159,12 @@ function parseArticleWithSelectors($: cheerio.CheerioAPI, sourceUrl: string): Sc
   // Em muitos artigos do Omelete, o conteúdo principal está em containers como:
   // .article-body, .content-body, main, ou diretamente sob o body
   const root = $('article, .article-body, .content-body, main, body').first();
-  if (!root || root.length === 0) return items;
+  if (!root || root.length === 0) {
+    logger.warn('parseArticleWithSelectors: no root', { sourceUrl });
+    return items;
+  }
+
+  logger.info('parseArticleWithSelectors: start', { sourceUrl });
 
   // 1) Headings que definem categoria e listas subsequentes
   root.find(HEADINGS_SEL).each((_i, el) => {
@@ -165,7 +173,9 @@ function parseArticleWithSelectors($: cheerio.CheerioAPI, sourceUrl: string): Sc
 
     const categoryMatch = CATEGORY_PATTERNS_PT.find(cat => cat.re.test(headingText));
     if (!categoryMatch) return;
+
     const category = categoryMatch.label;
+    logger.info('heading matched category', { headingText, category });
 
     // Região: todos os irmãos até próximo heading
     const region = $(el).nextUntil(HEADINGS_SEL);
@@ -174,12 +184,15 @@ function parseArticleWithSelectors($: cheerio.CheerioAPI, sourceUrl: string): Sc
     const closeList = $(el).nextAll('ul, ol').first();
 
     // Colete items de <li> em region e listas próximas
-    const lists = region.add(closeList)
+    const listsSel = region.add(closeList)
       .find('ul > li, ol > li')
       .add(region.filter('ul > li, ol > li'));
 
-    lists.each((_j, li) => {
+    logger.debug('listsSel count', { count: listsSel.length });
+
+    listsSel.each((_j, li) => {
       const parsed = parseLiNode($, li);
+      logger.debug('li parsed', { category, parsed });
       if (parsed.name && isProbableNomineeName(parsed.name)) {
         items.push({
           category,
@@ -197,6 +210,7 @@ function parseArticleWithSelectors($: cheerio.CheerioAPI, sourceUrl: string): Sc
         // Simula <li> parsing
         const fakeLi = cheerio.load(`<li>${raw}</li>`).root().find('li')[0];
         const parsed = parseLiNode($, fakeLi);
+        logger.debug('p bullet parsed', { category, parsed });
         if (parsed.name && isProbableNomineeName(parsed.name)) {
           items.push({
             category,
@@ -211,6 +225,7 @@ function parseArticleWithSelectors($: cheerio.CheerioAPI, sourceUrl: string): Sc
     // 1c) Fallback: elementos com role=listitem (acessibilidade)
     region.find('[role="listitem"]').each((_j, li) => {
       const parsed = parseLiNode($, li);
+      logger.debug('aria listitem parsed', { category, parsed });
       if (parsed.name && isProbableNomineeName(parsed.name)) {
         items.push({
           category,
@@ -221,6 +236,8 @@ function parseArticleWithSelectors($: cheerio.CheerioAPI, sourceUrl: string): Sc
       }
     });
   });
+
+  logger.info('parseArticleWithSelectors: done', { sourceUrl, extracted: items.length });
 
   // 2) Fallback global: quando não há headings “categoria”, tentar listas globais
   if (items.length === 0) {
@@ -248,6 +265,7 @@ export async function scrapeOmeleteArticles(urls: string[]): Promise<ScrapeRepor
 
   for (const url of urls) {
     try {
+      logger.info('scrape: fetch start', { url });
       const resp = await fetch(url, {
         headers: {
           'User-Agent': 'Mozilla/5.0 (compatible; OscarBot/1.0; +https://github.com/gavital/oscar-betting-app)',
@@ -258,6 +276,7 @@ export async function scrapeOmeleteArticles(urls: string[]): Promise<ScrapeRepor
       });
 
       if (!resp.ok) {
+        logger.warn('scrape: HTTP not OK', { url, status: resp.status });
         skipped.push({ url, reason: `HTTP ${resp.status}` });
         continue;
       }
@@ -266,22 +285,36 @@ export async function scrapeOmeleteArticles(urls: string[]): Promise<ScrapeRepor
       const $ = cheerio.load(html);
 
       // Primeiro tenta seletores específicos para “Lista completa”
-      let extracted = parseArticleWithSelectors($, url);
+      const extractedSel = parseArticleWithSelectors($, url);
+      let extracted = extractedSel;
 
       // Fallback extra: heurística anterior baseada em blocos “indicados”
-      if (extracted.length === 0) {
+      if (extractedSel.length === 0) {
+        logger.warn('scrape: selectors yielded 0, using heuristic fallback', { url });
         extracted = parseArticleHeuristic($, url);
       }
 
       if (extracted.length > 0) {
+        logger.info('scrape: page extracted items', { url, count: extracted.length });
       items.push(...extracted);
+      } else {
+        logger.warn('scrape: no items extracted for page', { url });
       }
+
       processed.push(url);
     } catch (err: any) {
+      logger.error('scrape: fetch error', { url, error: err?.message ?? 'network_error' });
       skipped.push({ url, reason: err?.message ?? 'network_error' });
     }
   }
 
+  const result = { items: dedupeNominees(items), processed, skipped };
+  logger.info('scrape: finished', {
+    processed: result.processed.length,
+    skipped: result.skipped.length,
+    items: result.items.length,
+  });
+  
   return { items: dedupeNominees(items), processed, skipped };
 }
 
