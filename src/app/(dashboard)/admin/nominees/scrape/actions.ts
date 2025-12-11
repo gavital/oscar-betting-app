@@ -13,6 +13,24 @@ function normalize(s: string): string {
     .trim();
 }
 
+// Sinônimos para casar labels do site com nomes de categorias do banco
+const CATEGORY_SYNONYMS: Record<string, string[]> = {
+  'melhor edicao': ['melhor montagem', 'montagem'],
+  'melhor montagem': ['melhor edicao', 'edicao'],
+  'melhor filme de animacao': ['melhor animacao', 'animacao'],
+  'melhor documentario': ['documentario'],
+  'melhor documentario em curta': ['documentario em curta', 'curta documentario'],
+  'melhor curta de animacao': ['curta animacao'],
+  'melhor curta live action': ['curta live action', 'curta ficcao'],
+  'melhor roteiro original': ['roteiro original'],
+  'melhor roteiro adaptado': ['roteiro adaptado'],
+  'melhor design de producao': ['design de producao', 'direcao de arte'],
+  'melhor maquiagem e penteado': ['maquiagem e penteado', 'maquiagem'],
+  'melhor trilha sonora': ['trilha sonora'],
+  'melhor cancao original': ['cancao original'],
+  'melhor filme internacional': ['filme internacional'],
+};
+
 export async function importFromGlobalScrape({ categoryId }: { categoryId?: string }) {
   const adminCheck = await requireAdmin();
   if (!adminCheck?.supabase) return { ok: false, error: 'Unauthorized' };
@@ -35,6 +53,8 @@ export async function importFromGlobalScrape({ categoryId }: { categoryId?: stri
     .select('id, name, is_active');
 
   if (catErr) return { ok: false, error: catErr.message };
+
+  // Mapa de categorias do banco
   const catMap = new Map<string, { id: string; name: string }>();
   for (const c of categories ?? []) {
     catMap.set(normalize(c.name), { id: c.id, name: c.name });
@@ -44,35 +64,65 @@ export async function importFromGlobalScrape({ categoryId }: { categoryId?: stri
   const urls = sources.map((s) => s.url);
   const { items, processed, skipped } = await scrapeOmeleteArticles(urls);
 
-  // Filtro opcional por categoryId (se o botão for por categoria)
+  // Log categorias detectadas
+  const countsByCategorySite = new Map<string, number>();
+  for (const it of items) {
+    const key = normalize(it.category);
+    countsByCategorySite.set(key, (countsByCategorySite.get(key) ?? 0) + 1);
+  }
+  console.info('[scrape] categories detected from site:', Array.from(countsByCategorySite.entries()));
+
+  // Filtro opcional por categoryId
   let filtered = items;
   if (categoryId) {
     // pega o nome da categoria selecionada e filtra por label equivalente
     const selected = (categories ?? []).find((c) => c.id === categoryId);
     if (!selected) return { ok: false, error: 'Selected category not found' };
     const selectedKey = normalize(selected.name);
-    filtered = filtered.filter((it) => normalize(it.category) === selectedKey);
+    filtered = filtered.filter((it) => {
+      const siteKey = normalize(it.category);
+      if (siteKey === selectedKey) return true;
+      const syns = CATEGORY_SYNONYMS[selectedKey] ?? [];
+      return syns.includes(siteKey);
+    });
   }
 
   // Agrupar por categoria (label normalizado)
   const groups = new Map<string, string[]>();
+
   for (const it of filtered) {
-    const key = normalize(it.category);
-    const list = groups.get(key) ?? [];
+    const siteKey = normalize(it.category);
+    // Match direto
+    if (catMap.has(siteKey)) {
+      const cat = catMap.get(siteKey)!;
+      const list = groups.get(cat.id) ?? [];
     list.push(it.name.trim());
-    groups.set(key, list);
+      groups.set(cat.id, list);
+      continue;
+    }
+    // Match por sinônimo
+    let matchedId: string | null = null;
+    for (const [dbKey, cat] of catMap.entries()) {
+      const syns = CATEGORY_SYNONYMS[dbKey] ?? [];
+      if (siteKey === dbKey || syns.includes(siteKey)) {
+        matchedId = cat.id;
+        break;
+      }
+    }
+    if (matchedId) {
+      const list = groups.get(matchedId) ?? [];
+      list.push(it.name.trim());
+      groups.set(matchedId, list);
+    }
   }
 
-  // Inserir por categoria
   const summary: Array<{ category: string; category_id?: string; imported: number }> = [];
+  let totalImported = 0;
 
-  for (const [key, names] of groups) {
-    const cat = catMap.get(key);
-    // Se for fluxo por categoria e não casar label, ignore
-    if (categoryId && (!cat || cat.id !== categoryId)) continue;
-
+  for (const [catId, names] of groups) {
+    const cat = (categories ?? []).find(c => c.id === catId);
     if (!cat) {
-      summary.push({ category: key, imported: 0 });
+      summary.push({ category: catId, imported: 0 });
       continue;
     }
 
@@ -82,9 +132,9 @@ export async function importFromGlobalScrape({ categoryId }: { categoryId?: stri
       .select('id, name')
       .eq('category_id', cat.id);
 
-    const existingSet = new Set((existing ?? []).map((n) => normalize(n.name)));
-
+    const existingSet = new Set((existing ?? []).map(n => normalize(n.name)));
     const toInsert: Array<{ name: string; category_id: string }> = [];
+
     for (const name of names) {
       const norm = normalize(name);
       if (!existingSet.has(norm)) {
@@ -96,9 +146,11 @@ export async function importFromGlobalScrape({ categoryId }: { categoryId?: stri
     if (toInsert.length > 0) {
       const { error: insErr } = await supabase.from('nominees').insert(toInsert);
       if (insErr) {
+        console.error('[scrape] insert error for category', cat.name, insErr.message);
         summary.push({ category: cat.name, category_id: cat.id, imported: 0 });
         continue;
       }
+      totalImported += toInsert.length;
     }
 
     summary.push({ category: cat.name, category_id: cat.id, imported: toInsert.length });
@@ -108,14 +160,14 @@ export async function importFromGlobalScrape({ categoryId }: { categoryId?: stri
 
   revalidatePath('/ranking');
 
-  const totalImported = summary.reduce((acc, s) => acc + s.imported, 0);
   return {
     ok: true,
     data: {
       totalImported,
-      summary,         // [{ category, category_id, imported }]
-      processed,       // URLs processadas
-      skipped,         // URLs ignoradas
+      summary,
+      processed,
+      skipped,
+      detectedCategories: Array.from(countsByCategorySite.entries()),
     },
   };
 }

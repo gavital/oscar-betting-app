@@ -12,13 +12,12 @@ import { ConfirmDeleteNomineeForm } from './nominees/_components/ConfirmDeleteNo
 import WinnerSetForm from './nominees/_components/WinnerSetForm'
 import { importNominees, createNominee, updateNominee, enrichNomineeWithTMDB } from './nominees/actions'
 import { getTmdbImageUrl } from '@/lib/tmdb/client'
-import { importNomineesFromRSS } from './nominees/rss/actions'
-import { SettingsRSSFeedsForm } from './settings/_components/SettingsRSSFeedsForm'
-import { setCeremonyYear } from './settings/actions'
-import { ImportFromRSSButton } from './nominees/_components/ImportFromRSSButton'
-import { SettingsInternalFeed } from './settings/_components/SettingsInternalFeed'
+
+// import { setCeremonyYear } from './settings/actions'
+
 import { SettingsScrapeSourcesForm } from './settings/_components/SettingsScrapeSourcesForm'
 import { ImportFromGlobalPageButton } from './nominees/_components/ImportFromGlobalPageButton'
+
 
 type AdminSearchParams = {
   tab?: 'categories' | 'nominees' | 'settings'
@@ -233,7 +232,6 @@ export default async function AdminUnifiedPage({
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <ImportFromRSSButton categoryId={selectedCategoryId} />
                   <ImportFromGlobalPageButton categoryId={selectedCategoryId} />
                   <Link href={`/admin${qs({ tab: 'nominees', categoryId: undefined })}`}>
                     <Button variant="outline">Voltar</Button>
@@ -265,7 +263,7 @@ export default async function AdminUnifiedPage({
               </section>
 
               {/* Entrada individual e lista */}
-              <section className="space-y-4">
+              {/* <section className="space-y-4">
                 <h4 className="text-lg font-semibold">Entrada Individual</h4>
                 <form action={createNominee} className="flex gap-2">
                   <input type="hidden" name="category_id" value={selectedCategoryId} />
@@ -352,7 +350,7 @@ export default async function AdminUnifiedPage({
                     )
                   })}
                 </ul>
-              </section>
+              </section> */}
             </div>
           )}
         </section>
@@ -399,13 +397,13 @@ export default async function AdminUnifiedPage({
             </div>
           </div>
 
-          <div className="border-t pt-6">
-            <h3 className="text-lg font-semibold">RSS Feeds</h3>
+          {/* <div className="border-t pt-6"> */}
+            {/* <h3 className="text-lg font-semibold">RSS Feeds</h3>
             {feedsErr ? (
               <div className="text-sm text-red-600">Erro ao carregar feeds: {feedsErr.message}</div>
             ) : (
               <SettingsRSSFeedsForm categories={categories ?? []} feeds={feeds ?? []} />
-            )}
+            )} */}
             <div className="border-t pt-6">
               <h3 className="text-lg font-semibold">Global Scrape Sources</h3>
               {scrapeErr ? (
@@ -414,7 +412,7 @@ export default async function AdminUnifiedPage({
                 <SettingsScrapeSourcesForm sources={scrapeSources ?? []} />
               )}
             </div>
-            <div className="border-t pt-6">
+            {/* <div className="border-t pt-6">
               <h3 className="text-lg font-semibold">Ano da cerimônia</h3>
               <form action={setCeremonyYear} className="flex items-center gap-2">
                 <Label htmlFor="ceremony_year">Ano</Label>
@@ -426,12 +424,12 @@ export default async function AdminUnifiedPage({
                 />
                 <Button type="submit">Salvar</Button>
               </form>
-            </div>
-            <div className="border-t pt-6">
+            </div> */}
+            {/* <div className="border-t pt-6">
               <h3 className="text-lg font-semibold">Feed Interno (Omelete)</h3>
               <SettingsInternalFeed year={Number(ceremonyYearSetting?.value) || new Date().getFullYear()} />
-            </div>
-          </div>
+            </div> */}
+          {/* </div> */}
         </section>
       )}
     </div>

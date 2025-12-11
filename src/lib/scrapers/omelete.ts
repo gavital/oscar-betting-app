@@ -20,10 +20,19 @@ const CATEGORY_PATTERNS_PT: Array<{ label: string; re: RegExp }> = [
   { label: 'Melhor Ator Coadjuvante', re: /\bmelhor ator coadjuvante\b/i },
   { label: 'Melhor Atriz Coadjuvante', re: /\bmelhor atriz coadjuvante\b/i },
   { label: 'Melhor Filme de Animação', re: /\bmelhor (filme de )?anima(ç|c)ão\b/i },
+  { label: 'Melhor Documentário', re: /\bmelhor document(á|a)rio\b/i },
+  { label: 'Melhor Documentário em Curta', re: /\bmelhor document(á|a)rio em curta\b/i },
+  { label: 'Melhor Curta de Animação', re: /\bmelhor curta (de )?anima(ç|c)ão\b/i },
+  { label: 'Melhor Curta Live Action', re: /\bmelhor curta (live action|de fic(ç|c)ão)\b/i },
   { label: 'Melhor Roteiro Original', re: /\bmelhor roteiro original\b/i },
   { label: 'Melhor Roteiro Adaptado', re: /\bmelhor roteiro adaptado\b/i },
   { label: 'Melhor Fotografia', re: /\bmelhor fotografia\b/i },
   { label: 'Melhor Edição', re: /\bmelhor edi(c|ç)ão\b/i },
+  { label: 'Melhor Montagem', re: /\bmelhor montagem\b/i },
+  { label: 'Melhor Som', re: /\bmelhor som\b/i },
+  { label: 'Melhor Figurino', re: /\bmelhor figurino\b/i },
+  { label: 'Melhor Maquiagem e Penteado', re: /\bmelhor maqui(a|e)gem( e)? penteado\b/i },
+  { label: 'Melhor Design de Produção', re: /\bmelhor design de produ(ç|c)ão\b/i },
   { label: 'Melhor Trilha Sonora', re: /\bmelhor trilha sonora\b/i },
   { label: 'Melhor Canção Original', re: /\bmelhor can(ç|c)ão original\b/i },
   { label: 'Melhor Filme Internacional', re: /\bmelhor filme internacional\b/i },
@@ -43,7 +52,7 @@ function isProbableNomineeName(s: string): boolean {
   // evitar frases gerais e termos não-nome
   const bad = [
     /oscar\s+20\d{2}/i,
-    /\b(lista|completa|confira|indicados|vencedores|premiação|premi(ac|ç)ão)\b/i,
+    /\b(lista|completa|confira|indicados|vencedores|premi(ac|ç)ão|premiação)\b/i,
   ];
   if (bad.some(re => re.test(t))) return false;
 
@@ -58,101 +67,16 @@ function isProbableNomineeName(s: string): boolean {
   return cleaned.length >= 2;
 }
 
-// Heurística: dado um bloco de texto que contém "Indicados" e uma categoria,
-// tenta extrair nomes separados por vírgula ou por linhas.
-// function extractNamesFromBlock(block: string): string[] {
-//   const cleaned = normalizeText(block);
-//   // corta logo após "indicados" para pegar a lista
-//   const idx = cleaned.toLowerCase().indexOf('indicados');
-//   let slice = idx >= 0 ? cleaned.slice(idx + 'indicados'.length) : cleaned;
-
-//   // remove prefixos comuns: ":" "–" "—"
-//   slice = slice.replace(/[–—:]/g, ' ');
-
-//   // tenta split por vírgula
-//   const commaSplit = slice.split(',').map(s => s.trim()).filter(Boolean);
-//   if (commaSplit.length >= 2) return commaSplit;
-
-//   // fallback: split por linhas
-//   const lineSplit = slice.split(/\n|•|-|\u2022/).map(s => s.trim()).filter(Boolean);
-//   if (lineSplit.length >= 2) return lineSplit;
-
-//   // fallback: nenhum padrão forte encontrado
-//   return [];
-// }
-
-// // Dado o HTML de um artigo, extrai pares (categoria, nomes) heurísticos.
-// function parseArticle(html: string, sourceUrl: string): ScrapedNominee[] {
-//   const $ = cheerio.load(html);
-//   const textBlocks: string[] = [];
-
-//   // agrega textos de elementos comuns em artigos
-//   $('h2, h3, p, li').each((_i, el) => {
-//     const t = normalizeText($(el).text() || '');
-//     if (t.length >= 8) textBlocks.push(t);
-//   });
-
-//   const nominees: ScrapedNominee[] = [];
-
-//   // percorre blocos procurando um bloco com "indicados" + categoria
-//   for (let i = 0; i < textBlocks.length; i++) {
-//     const block = textBlocks[i];
-//     if (!/\bindicados?\b/i.test(block)) continue;
-
-//     // detecta categoria naquele bloco ou em bloco adjacente
-//     let categoryLabel: string | null = null;
-
-//     for (const cat of CATEGORY_PATTERNS_PT) {
-//       if (cat.re.test(block)) {
-//         categoryLabel = cat.label;
-//         break;
-//       }
-//     }
-
-//     // se não achou no mesmo bloco, tenta olhar o bloco anterior ou próximo
-//     if (!categoryLabel && i > 0) {
-//       const prev = textBlocks[i - 1];
-//       for (const cat of CATEGORY_PATTERNS_PT) {
-//         if (cat.re.test(prev)) {
-//           categoryLabel = cat.label;
-//           break;
-//         }
-//       }
-//     }
-//     if (!categoryLabel && i < textBlocks.length - 1) {
-//       const next = textBlocks[i + 1];
-//       for (const cat of CATEGORY_PATTERNS_PT) {
-//         if (cat.re.test(next)) {
-//           categoryLabel = cat.label;
-//           break;
-//         }
-//       }
-//     }
-
-//     if (!categoryLabel) continue;
-
-//     const names = extractNamesFromBlock(block);
-//     for (const name of names) {
-//       // filtro simples para evitar textos longos
-//       if (name.length >= 2 && name.length <= 120) {
-//         nominees.push({ category: categoryLabel, name, sourceUrl });
-//       }
-//     }
-//   }
-
-//   return dedupeNominees(nominees);
-// }
-
-function dedupeNominees(items: ScrapedNominee[]): ScrapedNominee[] {
-  const seen = new Set<string>();
-  const out: ScrapedNominee[] = [];
-  for (const it of items) {
-    const key = `${it.category.toLowerCase()}::${it.name.toLowerCase()}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    out.push(it);
-  }
-  return out;
+// Extrai “nome” do texto de <li> removendo sufixos (“ – ”, “ - ”, “(…)”)
+function extractNameFromLiText(raw: string): string {
+  let t = normalizeText(raw).replace(/^[•\-–—]\s*/, '');
+  // corta antes de " – ", " - ", ":" ou "("
+  const cutIdx = [ ' – ', ' - ', ':', ' (' ].reduce((acc, mark) => {
+    const i = t.indexOf(mark);
+    return acc === -1 || (i !== -1 && i < acc) ? i : acc;
+  }, -1);
+  if (cutIdx !== -1) t = t.slice(0, cutIdx).trim();
+  return t;
 }
 
 // Seletores específicos para artigos “Lista completa”
@@ -174,41 +98,37 @@ function parseArticleWithSelectors($: cheerio.CheerioAPI, sourceUrl: string): Sc
     if (!categoryMatch) return;
     const category = categoryMatch.label;
 
-    // Região: elementos até próximo heading
-    let cursor = $(el).next();
-    const region: cheerio.Cheerio = cheerio.load('<div></div>')('div');
-    while (cursor && cursor.length > 0) {
-      const isNextHeading = cursor.is(HEADINGS_SEL);
-      if (isNextHeading) break;
-      // Append clone of cursor to region
-      const html = '<div>' + cheerio.load('<div></div>')('div').append(cursor.clone()).html() + '</div>';
-      region.append(html);
-      cursor = cursor.next();
-    }
+    // Região: todos os irmãos até próximo heading
+    const region = $(el).nextUntil(HEADINGS_SEL);
 
-    // 1a) Preferir listas explícitas <ul><li>, <ol><li>
-    region.find('ul > li, ol > li').each((_j, li) => {
-      // Se houver link dentro, usar o texto do link; senão, o próprio li
-      const anchor = $(li).find('a').first();
-      const raw = normalizeText(anchor.length ? anchor.text() : $(li).text());
-      if (isProbableNomineeName(raw)) {
-        items.push({ category, name: raw.replace(/^[•\-–—]\s*/, ''), sourceUrl });
+    // Preferir listas explícitas próximas
+    const closeList = $(el).nextAll('ul, ol').first();
+    const lists = region.add(closeList).find('ul > li, ol > li').add(region.filter('ul > li, ol > li'));
+    lists.each((_j, li) => {
+      const anchor = $(li).find('a, strong').first();
+      const baseText = anchor.length ? anchor.text() : $(li).text();
+      const name = extractNameFromLiText(baseText);
+      if (isProbableNomineeName(name)) {
+        items.push({ category, name, sourceUrl });
       }
     });
 
     // 1b) Fallback: parágrafos com bullets
     region.find('p').each((_j, p) => {
       const raw = normalizeText($(p).text());
-      if (/^[•\-–—]\s*/.test(raw) && isProbableNomineeName(raw)) {
-        items.push({ category, name: raw.replace(/^[•\-–—]\s*/, ''), sourceUrl });
+      if (/^[•\-–—]\s*/.test(raw)) {
+        const name = extractNameFromLiText(raw);
+        if (isProbableNomineeName(name)) {
+          items.push({ category, name, sourceUrl });
+        }
       }
     });
 
     // 1c) Fallback: elementos com role=listitem (acessibilidade)
     region.find('[role="listitem"]').each((_j, li) => {
-      const raw = normalizeText($(li).text());
-      if (isProbableNomineeName(raw)) {
-        items.push({ category, name: raw.replace(/^[•\-–—]\s*/, ''), sourceUrl });
+      const name = extractNameFromLiText($(li).text());
+      if (isProbableNomineeName(name)) {
+        items.push({ category, name, sourceUrl });
       }
     });
   });
@@ -216,10 +136,9 @@ function parseArticleWithSelectors($: cheerio.CheerioAPI, sourceUrl: string): Sc
   // 2) Fallback global: quando não há headings “categoria”, tentar listas globais
   if (items.length === 0) {
     root.find('ul > li, ol > li').each((_j, li) => {
-      const raw = normalizeText($(li).text());
-      if (isProbableNomineeName(raw)) {
-        // Sem categoria detectada, marcar como “Indefinida” (pode ser ajustado depois)
-        items.push({ category: 'Indefinida', name: raw.replace(/^[•\-–—]\s*/, ''), sourceUrl });
+      const name = extractNameFromLiText($(li).text());
+      if (isProbableNomineeName(name)) {
+        items.push({ category: 'Indefinida', name, sourceUrl });
       }
     });
   }
@@ -272,7 +191,7 @@ export async function scrapeOmeleteArticles(urls: string[]): Promise<ScrapeRepor
   return { items: dedupeNominees(items), processed, skipped };
 }
 
-// Heurística anterior (mantida como fallback)
+// Heurística (mantida como fallback)
 function parseArticleHeuristic($: cheerio.CheerioAPI, sourceUrl: string): ScrapedNominee[] {
   const textBlocks: string[] = [];
   $('h2, h3, p, li').each((_i, el) => {
@@ -303,7 +222,7 @@ function parseArticleHeuristic($: cheerio.CheerioAPI, sourceUrl: string): Scrape
     }
     if (!categoryLabel) continue;
 
-    const names = extractNamesFromBlock(block);
+    const names = extractNamesFromHeuristicBlock(block);
     for (const name of names) {
       if (isProbableNomineeName(name)) {
         out.push({ category: categoryLabel, name, sourceUrl });
@@ -314,18 +233,14 @@ function parseArticleHeuristic($: cheerio.CheerioAPI, sourceUrl: string): Scrape
   return dedupeNominees(out);
 }
 
-function extractNamesFromBlock(block: string): string[] {
-  const cleaned = normalizeText(block).replace(/[–—:]/g, ':');
-  const idx = cleaned.toLowerCase().indexOf('indicados');
-  let slice = idx >= 0 ? cleaned.slice(idx + 'indicados'.length) : cleaned;
-
-  // vírgulas ou linhas
-  const commaSplit = slice.split(',').map(s => s.trim()).filter(Boolean);
+function extractNamesFromHeuristicBlock(block: string): string[] {
+  let slice = normalizeText(block).replace(/[–—:]/g, ':');
+  const idx = slice.toLowerCase().indexOf('indicados');
+  if (idx >= 0) slice = slice.slice(idx + 'indicados'.length);
+  const commaSplit = slice.split(',').map(s => extractNameFromLiText(s)).filter(Boolean);
   if (commaSplit.length >= 2) return commaSplit;
-
-  const lineSplit = slice.split(/\n|•|-|\u2022/).map(s => s.trim()).filter(Boolean);
+  const lineSplit = slice.split(/\n|•|-|\u2022/).map(s => extractNameFromLiText(s)).filter(Boolean);
   if (lineSplit.length >= 2) return lineSplit;
-
   return [];
 }
 
