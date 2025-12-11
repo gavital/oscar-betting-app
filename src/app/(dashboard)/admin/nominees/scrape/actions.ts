@@ -63,11 +63,11 @@ export async function importFromGlobalScrape({ categoryId }: { categoryId?: stri
     .from('categories')
     .select('id, name, is_active');
 
-    if (catErr) {
-      logger.error('categories load error', { error: catErr.message });
-      return { ok: false, error: catErr.message };
-    }
-    logger.info('categories loaded', { count: categories?.length ?? 0 });
+  if (catErr) {
+    logger.error('categories load error', { error: catErr.message });
+    return { ok: false, error: catErr.message };
+  }
+  logger.info('categories loaded', { count: categories?.length ?? 0 });
 
   // Mapa de categorias do banco: chave normalizada -> { id, name }
   const catMap = new Map<string, { id: string; name: string }>();
@@ -102,7 +102,7 @@ export async function importFromGlobalScrape({ categoryId }: { categoryId?: stri
     countsByCategorySite.set(key, (countsByCategorySite.get(key) ?? 0) + 1);
   }
   logger.info('site categories detected', Array.from(countsByCategorySite.entries()));
-  
+
   console.info('[scrape] categories detected from site:', Array.from(countsByCategorySite.entries()));
 
   // Filtro opcional por categoryId (se o botão for por categoria)
@@ -127,116 +127,149 @@ export async function importFromGlobalScrape({ categoryId }: { categoryId?: stri
       return matched;
     });
     logger.info('filtered by category', { selectedKey, filteredCount: filtered.length });
-  }
-  filtered = filtered.filter((it) => !/leia nossa crítica/i.test(it.name) && !/\bcrítica\b/i.test(it.name));
 
-  // Agrupar por categoria do banco (considerando sinônimos) — SEMPRE usa { names, metas }
-  const groups = new Map<string, GroupEntry>();
+    // Sanitização e filtro de ruído (reforçado)
+    {
+      const beforeCount = filtered.length;
 
-  for (const it of filtered) {
-    const siteKey = normalize(it.category);
-    const catId = resolveCategoryId(siteKey);
-    if (!catId) {
-      logger.warn('unresolved category', { siteKey, name: it.name });
-      continue;
-    }
-    const entry = groups.get(catId) ?? { names: [], metas: [] };
-    entry.names.push(it.name.trim());
-    entry.metas.push(it.meta ?? {});
-    groups.set(catId, entry);
-  }
+      filtered = filtered
+        .map((it) => {
+          // Remove qualquer parêntese contendo “crítica” e normaliza espaços/dashes
+          const cleanName = (it.name ?? '')
+            .replace(/\([^)]*crítica[^)]*\)/gi, '') // remove (…crítica…)
+            .replace(/\u00A0/g, ' ')                // NBSP -> espaço
+            .replace(/[–—]/g, '-')                  // dashes -> hífen
+            .replace(/\s+/g, ' ')                   // colapsa espaços
+            .trim();
 
-  logger.info('grouping summary', Array.from(groups.entries()).map(([catId, g]) => ({
-    catId,
-    names: g.names.length,
-    metas: g.metas.length,
-  })));
+          // Garante meta como objeto (nunca null/undefined)
+          const cleanMeta =
+            it.meta && typeof it.meta === 'object' ? { ...it.meta } : {};
 
-  const summary: Array<{ category: string; category_id?: string; imported: number }> = [];
-  let totalImported = 0;
+          return { ...it, name: cleanName, meta: cleanMeta };
+        })
+        .filter(
+          (it) =>
+            it.name.length > 0 &&
+            !/leia nossa crítica/i.test(it.name) &&
+            !/\bcrítica\b/i.test(it.name)
+        );
 
-  for (const [catId, group] of groups) {
-    const cat = (categories ?? []).find(c => c.id === catId);
-    if (!cat) {
-      logger.warn('group without category', { catId });
-      summary.push({ category: catId, imported: 0 });
-      continue;
+      logger.info('noise filter applied', {
+        beforeCount,
+        afterCount: filtered.length,
+      });
     }
 
-    // Segurança: garantir estrutura esperada
-    const names = Array.isArray(group?.names) ? group.names : [];
-    const metas = Array.isArray(group?.metas) ? group.metas : [];
-    logger.info('prepare insert', { category: cat.name, namesCount: names.length });
 
-    if (names.length === 0) {
-      summary.push({ category: cat.name, category_id: cat.id, imported: 0 });
-      continue;
-    }
 
-    // Ler nominees existentes para deduplicação
-    const { data: existing } = await supabase
-      .from('nominees')
-      .select('id, name')
-      .eq('category_id', cat.id);
+    // Agrupar por categoria do banco (considerando sinônimos) — SEMPRE usa { names, metas }
+    const groups = new Map<string, GroupEntry>();
 
-    const existingSet = new Set((existing ?? []).map(n => normalize(n.name)));
-    const toInsert: Array<{ name: string; category_id: string; meta: Record<string, any> }> = [];
-
-    for (let i = 0; i < names.length; i++) {
-      const name = names[i];
-      const meta = metas[i] || {};
-
-      const norm = normalize(name);
-
-      if (!existingSet.has(norm)) {
-        // Sempre incluir meta, garantindo objeto não nulo
-        const insertObj: { name: string; category_id: string; meta: Record<string, any> } = {
-          name: name.trim(),
-          category_id: cat.id,
-      meta: {},
-        };
-
-    if (meta && typeof meta === 'object') {
-      // copia raso para evitar referência inesperada
-      insertObj.meta = { ...meta };
-        }
-
-        toInsert.push(insertObj);
-        existingSet.add(norm);
-      } else {
-        logger.debug('duplicate skip', { category: cat.name, name });
+    for (const it of filtered) {
+      const siteKey = normalize(it.category);
+      const catId = resolveCategoryId(siteKey);
+      if (!catId) {
+        logger.warn('unresolved category', { siteKey, name: it.name });
+        continue;
       }
+      const entry = groups.get(catId) ?? { names: [], metas: [] };
+      entry.names.push(it.name.trim());
+      entry.metas.push(it.meta ?? {});
+      groups.set(catId, entry);
     }
 
-    logger.info('insert batch', { category: cat.name, toInsertCount: toInsert.length, sample: toInsert.slice(0, 3) });
+    logger.info('grouping summary', Array.from(groups.entries()).map(([catId, g]) => ({
+      catId,
+      names: g.names.length,
+      metas: g.metas.length,
+    })));
 
-    if (toInsert.length > 0) {
-      const { error: insErr } = await supabase.from('nominees').insert(toInsert);
-      if (insErr) {
-        logger.error('insert error', { category: cat.name, error: insErr.message });
+    const summary: Array<{ category: string; category_id?: string; imported: number }> = [];
+    let totalImported = 0;
+
+    for (const [catId, group] of groups) {
+      const cat = (categories ?? []).find(c => c.id === catId);
+      if (!cat) {
+        logger.warn('group without category', { catId });
+        summary.push({ category: catId, imported: 0 });
+        continue;
+      }
+
+      // Segurança: garantir estrutura esperada
+      const names = Array.isArray(group?.names) ? group.names : [];
+      const metas = Array.isArray(group?.metas) ? group.metas : [];
+      logger.info('prepare insert', { category: cat.name, namesCount: names.length });
+
+      if (names.length === 0) {
         summary.push({ category: cat.name, category_id: cat.id, imported: 0 });
         continue;
       }
-      totalImported += toInsert.length;
+
+      // Ler nominees existentes para deduplicação
+      const { data: existing } = await supabase
+        .from('nominees')
+        .select('id, name')
+        .eq('category_id', cat.id);
+
+      const existingSet = new Set((existing ?? []).map(n => normalize(n.name)));
+      const toInsert: Array<{ name: string; category_id: string; meta: Record<string, any> }> = [];
+
+      for (let i = 0; i < names.length; i++) {
+        const name = names[i];
+        const meta = metas[i] || {};
+
+        const norm = normalize(name);
+
+        if (!existingSet.has(norm)) {
+          // Sempre incluir meta, garantindo objeto não nulo
+          const insertObj: { name: string; category_id: string; meta: Record<string, any> } = {
+            name: name.trim(),
+            category_id: cat.id,
+            meta: {},
+          };
+
+          if (meta && typeof meta === 'object') {
+            // copia raso para evitar referência inesperada
+            insertObj.meta = { ...meta };
+          }
+
+          toInsert.push(insertObj);
+          existingSet.add(norm);
+        } else {
+          logger.debug('duplicate skip', { category: cat.name, name });
+        }
+      }
+
+      logger.info('insert batch', { category: cat.name, toInsertCount: toInsert.length, sample: toInsert.slice(0, 3) });
+
+      if (toInsert.length > 0) {
+        const { error: insErr } = await supabase.from('nominees').insert(toInsert);
+        if (insErr) {
+          logger.error('insert error', { category: cat.name, error: insErr.message });
+          summary.push({ category: cat.name, category_id: cat.id, imported: 0 });
+          continue;
+        }
+        totalImported += toInsert.length;
+      }
+
+      summary.push({ category: cat.name, category_id: cat.id, imported: toInsert.length });
+      // Revalidar páginas relacionadas
+      revalidatePath(`/admin/nominees/${cat.id}`);
     }
 
-    summary.push({ category: cat.name, category_id: cat.id, imported: toInsert.length });
-    // Revalidar páginas relacionadas
-    revalidatePath(`/admin/nominees/${cat.id}`);
+    revalidatePath('/ranking');
+
+    logger.info('import done', { totalImported, processed: processed.length, skipped: skipped.length });
+
+    return {
+      ok: true,
+      data: {
+        totalImported,
+        summary,
+        processed,
+        skipped,
+        detectedCategories: Array.from(countsByCategorySite.entries()),
+      },
+    };
   }
-
-  revalidatePath('/ranking');
-
-  logger.info('import done', { totalImported, processed: processed.length, skipped: skipped.length });
-
-  return {
-    ok: true,
-    data: {
-      totalImported,
-      summary,
-      processed,
-      skipped,
-      detectedCategories: Array.from(countsByCategorySite.entries()),
-    },
-  };
-}
