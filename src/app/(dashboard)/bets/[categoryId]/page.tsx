@@ -43,16 +43,16 @@ export default async function BetCategoryPage({
     .eq('key', 'bets_open')
     .maybeSingle()
 
-    const betsOpen =
-      setting?.value === true ||
-      setting?.value === 'true' ||
-      setting?.value?.toString?.() === 'true' ||
-      setting?.value == null // fallback: aberto quando ausente
+  const betsOpen =
+    setting?.value === true ||
+    setting?.value === 'true' ||
+    setting?.value?.toString?.() === 'true' ||
+    setting?.value == null // fallback: aberto quando ausente
 
   // Nominees da categoria
   const { data: nominees, error: nomErr } = await supabase
     .from('nominees')
-    .select('id, name, tmdb_data')
+    .select('id, name, meta, tmdb_data')
     .eq('category_id', categoryId)
     .order('name')
 
@@ -105,16 +105,16 @@ export default async function BetCategoryPage({
 
           return (
             <li key={n.id} className="border rounded p-3 flex flex-col gap-3">
-            {/* Imagem do TMDB */}
-            {posterUrl ? (
-              <Image
-                src={posterUrl}
-                alt={n.name}
-                width={185}
-                height={278}
+              {/* Imagem do TMDB */}
+              {posterUrl ? (
+                <Image
+                  src={posterUrl}
+                  alt={n.name}
+                  width={185}
+                  height={278}
                   className="rounded border object-cover bg-card"
-              />
-            ) : (
+                />
+              ) : (
                 <div className="w-[185px] h-[278px] rounded border bg-card grid place-items-center text-[12px] text-foreground/70">
                   Sem imagem
                 </div>
@@ -122,6 +122,11 @@ export default async function BetCategoryPage({
 
               <div className="flex-1">
                 <div className="font-medium">{n.name}</div>
+                {(n as any)?.meta?.film_title && (
+                  <div className="text-xs text-foreground/70">
+                    Filme: {(n as any).meta.film_title}
+                  </div>
+                )}
                 {isSelected && (
                   <div className="text-xs text-green-700 mt-1">Sua aposta atual</div>
                 )}

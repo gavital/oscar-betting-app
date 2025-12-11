@@ -34,11 +34,11 @@ export default async function AdminUnifiedPage({
     .select('id, name, max_nominees, is_active')
     .order('name')
 
-  if (catErr) {
+  if (categoriesErr) {
     return (
       <div>
         <h2 className="text-2xl font-semibold">Gestão de Indicados</h2>
-        <p className="text-red-600 text-sm">Erro ao carregar categorias: {catErr.message}</p>
+        <p className="text-red-600 text-sm">Erro ao carregar categorias: {categoriesErr.message}</p>
       </div>
     )
   }
