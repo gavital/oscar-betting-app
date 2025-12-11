@@ -133,6 +133,7 @@ export async function importFromGlobalScrape({ categoryId }: { categoryId?: stri
     // Segurança: garantir estrutura esperada
     const names = Array.isArray(group?.names) ? group.names : [];
     const metas = Array.isArray(group?.metas) ? group.metas : [];
+
     if (names.length === 0) {
       summary.push({ category: cat.name, category_id: cat.id, imported: 0 });
       continue;
@@ -145,21 +146,26 @@ export async function importFromGlobalScrape({ categoryId }: { categoryId?: stri
       .eq('category_id', cat.id);
 
     const existingSet = new Set((existing ?? []).map(n => normalize(n.name)));
-    const toInsert: Array<{ name: string; category_id: string; meta?: Record<string, any> }> = [];
+    const toInsert: Array<{ name: string; category_id: string; meta: Record<string, any> }> = [];
 
     for (let i = 0; i < names.length; i++) {
       const name = names[i];
       const meta = metas[i] || {};
+
       const norm = normalize(name);
       if (!existingSet.has(norm)) {
-        // Se houver film_title, guarda em meta
-        const insertObj: { name: string; category_id: string; meta?: Record<string, any> } = {
+        // Sempre incluir meta, garantindo objeto não nulo
+        const insertObj: { name: string; category_id: string; meta: Record<string, any> } = {
           name: name.trim(),
           category_id: cat.id,
+      meta: {},
         };
-        if (meta && typeof meta === 'object' && Object.keys(meta).length > 0) {
-          insertObj.meta = meta;
+
+    if (meta && typeof meta === 'object') {
+      // copia raso para evitar referência inesperada
+      insertObj.meta = { ...meta };
         }
+
         toInsert.push(insertObj);
         existingSet.add(norm);
       }

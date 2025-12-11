@@ -8,7 +8,7 @@ import SettingsResultsForm from './settings/_components/SettingsResultsForm'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { ConfirmDeleteNomineeForm } from './nominees/_components/ConfirmDeleteNomineeForm'
+import ConfirmDeleteNomineeDialog from './nominees/_components/ConfirmDeleteNomineeDialog'
 import WinnerSetForm from './nominees/_components/WinnerSetForm'
 import { importNominees, createNominee, updateNominee, enrichNomineeWithTMDB } from './nominees/actions'
 import { getTmdbImageUrl } from '@/lib/tmdb/client'
@@ -340,7 +340,7 @@ export default async function AdminUnifiedPage({
                             <Button variant="outline" className="text-sm">Salvar</Button>
                           </form>
 
-                          <ConfirmDeleteNomineeForm id={n.id} />
+                          <ConfirmDeleteNomineeDialog id={n.id} />
 
                           <WinnerSetForm
                             categoryId={selectedCategoryId}
