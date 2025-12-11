@@ -83,24 +83,39 @@ function extractNameFromLiText(raw: string): string {
 }
 
 // Extrai “name” e “film_title” de um nó <li> ou texto de bullet
-function parseLiNodeWithCategory($: cheerio.CheerioAPI, li: cheerio.Element, categoryLabel: string): { name?: string; film_title?: string } {
-  // Preferir textos em <a>, <strong>, <b>
+
+function parseLiNodeWithCategory(
+  $: cheerio.CheerioAPI,
+  li: cheerio.Element,
+  categoryLabel: string
+): { name?: string; film_title?: string } {
   const anchorOrStrong = $(li).find('a, strong, b').first();
   let baseText = normalizeText(anchorOrStrong.length ? anchorOrStrong.text() : $(li).text());
+
+  // Normaliza bullets no início
   baseText = baseText.replace(/^[•\-–—]\s*/, '');
 
-  // Skip ruído
+  // Remove qualquer parêntese que contenha a palavra "crítica"
+  // Ex.: "(Leia nossa crítica)" ou variações
+  baseText = baseText.replace(/\([^)]*crítica[^)]*\)/gi, '').trim();
+
+  // Remove sufixos explícitos " - Leia nossa crítica" ou variações com dash
+  baseText = baseText.replace(/\s*(?:–|—|-)\s*Leia nossa crítica/gi, '').trim();
+
+  // Filtro de ruído após sanitização
   if (/leia nossa crítica/i.test(baseText) || /\bcrítica\b/i.test(baseText)) {
     return {};
   }
 
   // Música: "Título" - Filme
-  const quotedSong = baseText.match(/^"(.+?)"\s*-\s*(.+)$/);
+  const quotedSong = baseText.match(/^"(.+?)"\s*(?:–|—|-)\s*(.+)$/);
   if (quotedSong) {
-    return {
+    const parsed = {
       name: cleanName(quotedSong[1]),
       film_title: cleanFilm(quotedSong[2]),
     };
+    logger.debug('parseLiNode(song)', { baseText, parsed });
+    return parsed;
   }
 
   // Se houver <em>/<i> com o título do filme
@@ -108,54 +123,76 @@ function parseLiNodeWithCategory($: cheerio.CheerioAPI, li: cheerio.Element, cat
   if (em.length) {
     const film = normalizeText(em.text());
     // Remover o trecho <em>/<i> do texto base, se ele estiver embutido
-    const nameOnly = normalizeText(baseText.replace(film, '')).replace(/[()]/g, '').trim(); return {
+    const nameOnly = normalizeText(baseText.replace(film, '')).replace(/[()]/g, '').trim();
+    const parsed = {
       name: cleanName(nameOnly),
       film_title: cleanFilm(film),
     };
+    logger.debug('parseLiNode(em/i)', { baseText, parsed });
+    return parsed;
   }
 
-  // Atuação: "Nome – Filme" ou "Nome - Filme" ou "Nome: Filme"
+  // Definição ampla de separadores (– em dash, — em dash, - hyphen, : colon)
+  const sepPattern = /(?:–|—|-|:)/;
+
+  // Atuação: tentar separar por "Nome SEP Filme"
   if (isActingCategory(categoryLabel)) {
-    const m = baseText.match(/^(.+?)\s*(?:–|-|:)\s*(.+)$/);
+    const m = baseText.match(/^(.+?)\s*(?:–|—|-|:)\s*(.+)$/);
     if (m) {
-      return {
+      const parsed = {
         name: cleanName(m[1]),
         film_title: cleanFilm(m[2]),
       };
+      logger.debug('parseLiNode(acting sep)', { baseText, parsed });
+      return parsed;
     }
     // Padrão "Nome (Filme)"
     const paren = baseText.match(/^(.+?)\s*\((.+?)\)$/);
     if (paren) {
-      return {
+      const parsed = {
         name: cleanName(paren[1]),
         film_title: cleanFilm(paren[2]),
       };
+      logger.debug('parseLiNode(acting paren)', { baseText, parsed });
+      return parsed;
     }
-    return { name: cleanName(baseText) };
+    const parsed = { name: cleanName(baseText) };
+    logger.debug('parseLiNode(acting fallback)', { baseText, parsed });
+    return parsed;
   }
 
-  // Categorias de filme/obra: não dividir por ":" ou " - ", preservar título completo
+  // Categorias de filme/obra: manter título completo como name (não dividir)
   if (isFilmWorkCategory(categoryLabel)) {
-    // Algumas páginas têm “Título: Subtítulo” → preservar completo
-    return { name: cleanName(baseText) };
+    // Remover aspas e normalizar
+    let filmOnly = baseText.replace(/[“”"']/g, '').trim();
+    const parsed = { name: cleanName(filmOnly) };
+    logger.debug('parseLiNode(non-acting)', { baseText, parsed });
+    return parsed;
   }
 
   // Caso genérico: tentar separar por “ – ”/“-”/“:”
-  const m = baseText.match(/^(.+?)\s*(?:–|-|:)\s*(.+)$/);
+  const m = baseText.match(/^(.+?)\s*(?:–|—|-|:)\s*(.+)$/);
   if (m) {
-    return {
+    const parsed = {
       name: cleanName(m[1]),
       film_title: cleanFilm(m[2]),
     };
+    logger.debug('parseLiNode(generic sep)', { baseText, parsed });
+    return parsed;
   }
   const paren = baseText.match(/^(.+?)\s*\((.+?)\)$/);
   if (paren) {
-    return {
+    const parsed = {
       name: cleanName(paren[1]),
       film_title: cleanFilm(paren[2]),
     };
+    logger.debug('parseLiNode(generic paren)', { baseText, parsed });
+    return parsed;
   }
-  return { name: cleanName(baseText) };
+
+  const parsed = { name: cleanName(baseText) };
+  logger.debug('parseLiNode(generic fallback)', { baseText, parsed });
+  return parsed;
 }
 
 // Retorna o label da categoria mais específica que casa com o heading
