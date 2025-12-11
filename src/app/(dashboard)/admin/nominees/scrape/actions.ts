@@ -31,6 +31,8 @@ const CATEGORY_SYNONYMS: Record<string, string[]> = {
   'melhor filme internacional': ['filme internacional'],
 };
 
+type GroupEntry = { names: string[]; metas: Record<string, any>[] };
+
 export async function importFromGlobalScrape({ categoryId }: { categoryId?: string }) {
   const adminCheck = await requireAdmin();
   if (!adminCheck?.supabase) return { ok: false, error: 'Unauthorized' };
@@ -54,10 +56,26 @@ export async function importFromGlobalScrape({ categoryId }: { categoryId?: stri
 
   if (catErr) return { ok: false, error: catErr.message };
 
-  // Mapa de categorias do banco
+  // Mapa de categorias do banco: chave normalizada -> { id, name }
   const catMap = new Map<string, { id: string; name: string }>();
   for (const c of categories ?? []) {
     catMap.set(normalize(c.name), { id: c.id, name: c.name });
+  }
+
+  // Helper: resolve id da categoria no banco a partir do label do site (considerando sinônimos)
+  function resolveCategoryId(siteLabelNorm: string): string | null {
+    // match direto
+    if (catMap.has(siteLabelNorm)) {
+      return catMap.get(siteLabelNorm)!.id;
+    }
+    // match por sinônimo
+    for (const [dbKey, cat] of catMap.entries()) {
+      const syns = CATEGORY_SYNONYMS[dbKey] ?? [];
+      if (siteLabelNorm === dbKey || syns.includes(siteLabelNorm)) {
+        return cat.id;
+      }
+    }
+    return null;
   }
 
   // Scrape de cada fonte e consolidação por categoria
@@ -72,13 +90,14 @@ export async function importFromGlobalScrape({ categoryId }: { categoryId?: stri
   }
   console.info('[scrape] categories detected from site:', Array.from(countsByCategorySite.entries()));
 
-  // Filtro opcional por categoryId
+  // Filtro opcional por categoryId (se o botão for por categoria)
   let filtered = items;
   if (categoryId) {
     // pega o nome da categoria selecionada e filtra por label equivalente
     const selected = (categories ?? []).find((c) => c.id === categoryId);
     if (!selected) return { ok: false, error: 'Selected category not found' };
     const selectedKey = normalize(selected.name);
+
     filtered = filtered.filter((it) => {
       const siteKey = normalize(it.category);
       if (siteKey === selectedKey) return true;
@@ -87,41 +106,18 @@ export async function importFromGlobalScrape({ categoryId }: { categoryId?: stri
     });
   }
 
-  // Agrupar por categoria do banco (considerando sinônimos)
-  const groups = new Map<string, { names: string[]; metas: Record<string, any>[] }>();
+  // Agrupar por categoria do banco (considerando sinônimos) — SEMPRE usa { names, metas }
+  const groups = new Map<string, GroupEntry>();
 
   for (const it of filtered) {
     const siteKey = normalize(it.category);
-    // Match direto
-    if (catMap.has(siteKey)) {
-      const cat = catMap.get(siteKey)!;
-      const list = groups.get(cat.id) ?? [];
-      list.push(it.name.trim());
-      groups.set(cat.id, list);
-      continue;
-    }
-    // Match por sinônimo
-    let matchedId: string | null = null;
+    const catId = resolveCategoryId(siteKey);
+    if (!catId) continue;
 
-    // Match direto ou por sinônimo
-    if (catMap.has(siteKey)) {
-      matchedId = catMap.get(siteKey)!.id;
-    } else {
-      for (const [dbKey, cat] of catMap.entries()) {
-        const syns = CATEGORY_SYNONYMS[dbKey] ?? [];
-        if (siteKey === dbKey || syns.includes(siteKey)) {
-          matchedId = cat.id;
-          break;
-        }
-      }
-    }
-
-    if (matchedId) {
-      const entry = groups.get(matchedId) ?? { names: [], metas: [] };
-      entry.names.push(it.name.trim());
-      entry.metas.push(it.meta ?? {});
-      groups.set(matchedId, entry);
-    }
+    const entry = groups.get(catId) ?? { names: [], metas: [] };
+    entry.names.push(it.name.trim());
+    entry.metas.push(it.meta ?? {});
+    groups.set(catId, entry);
   }
 
   const summary: Array<{ category: string; category_id?: string; imported: number }> = [];
@@ -134,6 +130,14 @@ export async function importFromGlobalScrape({ categoryId }: { categoryId?: stri
       continue;
     }
 
+    // Segurança: garantir estrutura esperada
+    const names = Array.isArray(group?.names) ? group.names : [];
+    const metas = Array.isArray(group?.metas) ? group.metas : [];
+    if (names.length === 0) {
+      summary.push({ category: cat.name, category_id: cat.id, imported: 0 });
+      continue;
+    }
+
     // Ler nominees existentes para deduplicação
     const { data: existing } = await supabase
       .from('nominees')
@@ -143,9 +147,9 @@ export async function importFromGlobalScrape({ categoryId }: { categoryId?: stri
     const existingSet = new Set((existing ?? []).map(n => normalize(n.name)));
     const toInsert: Array<{ name: string; category_id: string; meta?: Record<string, any> }> = [];
 
-    for (let i = 0; i < group.names.length; i++) {
-      const name = group.names[i];
-      const meta = group.metas[i] || {};
+    for (let i = 0; i < names.length; i++) {
+      const name = names[i];
+      const meta = metas[i] || {};
       const norm = normalize(name);
       if (!existingSet.has(norm)) {
         // Se houver film_title, guarda em meta
