@@ -263,14 +263,15 @@ export default async function AdminUnifiedPage({
               </section>
 
               {/* Entrada individual e lista */}
-              {/* <section className="space-y-4">
-                <h4 className="text-lg font-semibold">Entrada Individual</h4>
+              <section className="space-y-4">
+                {/* <h4 className="text-lg font-semibold">Entrada Individual</h4>
                 <form action={createNominee} className="flex gap-2">
                   <input type="hidden" name="category_id" value={selectedCategoryId} />
                   <Input name="name" placeholder="Nome do indicado" required minLength={2} />
                   <Button type="submit">Adicionar</Button>
-                </form>
+                </form> */}
 
+                <h4 className="text-lg font-semibold">Indicados:</h4>
                 <ul className="divide-y">
                   {categoryNominees.map((n) => {
                     const posterPath =
@@ -350,7 +351,7 @@ export default async function AdminUnifiedPage({
                     )
                   })}
                 </ul>
-              </section> */}
+              </section>
             </div>
           )}
         </section>
