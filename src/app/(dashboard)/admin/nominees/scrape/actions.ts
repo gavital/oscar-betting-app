@@ -145,6 +145,7 @@ export async function importFromGlobalScrape({ categoryId }: { categoryId?: stri
         // Remove qualquer parêntese contendo “crítica” e normaliza espaços/dashes
         const cleanName = (it.name ?? '')
           .replace(/\([^)]*crítica[^)]*\)/gi, '') // remove (…crítica…)
+      .replace(/\(\s*\)/g, '')      // remove "()"
           .replace(/\u00A0/g, ' ')                // NBSP -> espaço
           .replace(/[–—]/g, '-')                  // dashes -> hífen
           .replace(/\s+/g, ' ')                   // colapsa espaços

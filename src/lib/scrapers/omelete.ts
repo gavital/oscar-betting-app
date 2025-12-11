@@ -108,6 +108,7 @@ function parseLiNodeWithCategory(
   baseText = baseText
     .replace(/^[•\-–—]\s*/, '')                 // bullets no início
     .replace(/\([^)]*crítica[^)]*\)/gi, '')     // remove (…crítica…)
+    .replace(/\(\s*\)/g, '')            // remove "()"
     .replace(/\u00A0/g, ' ')                    // NBSP -> espaço
     .replace(/[–—]/g, '-')                      // en/em dash -> hífen
     .replace(/\s+/g, ' ')                       // colapsa espaços
@@ -257,11 +258,17 @@ function cleanName(s?: string): string | undefined {
 function cleanFilm(s?: string): string | undefined {
   if (!s) return undefined;
   let t = normalizeText(s);
+  // remove any "(...crítica...)" e parênteses vazios
+  t = t.replace(/\([^)]*crítica[^)]*\)/gi, '');
+  t = t.replace(/\(\s*\)/g, ''); // remove "()"
+  // remover aspas, colapsar espaços
+  t = t.replace(/[“”"']/g, '').replace(/\s+/g, ' ').trim();
+
   // Remove prefixos genéricos como "do filme", "do longa", etc.
   t = t.replace(/^(do|da|de)\s+(filme|longa|obra)\s+/i, '').trim();
   // Remover aspas e pontuação excessiva
   t = t.replace(/[“”"']/g, '').trim();
-  return t.length >= 1 ? t : undefined;
+  if (!t) t.length >= 1 ? t : undefined;
 }
 
 // Seletores específicos para artigos “Lista completa”
