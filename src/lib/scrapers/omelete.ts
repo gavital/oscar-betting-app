@@ -15,30 +15,28 @@ export type ScrapeReport = {
 };
 
 const CATEGORY_PATTERNS_PT: Array<{ label: string; re: RegExp }> = [
-  { label: 'Melhor Filme', re: /\bmelhor filme\b/i },
-  { label: 'Melhor Diretor', re: /\bmelhor diretor\b/i },
-  { label: 'Melhor Ator', re: /\bmelhor ator\b/i },
-  { label: 'Melhor Atriz', re: /\bmelhor atriz\b/i },
-  { label: 'Melhor Ator Coadjuvante', re: /\bmelhor ator coadjuvante\b/i },
   { label: 'Melhor Atriz Coadjuvante', re: /\bmelhor atriz coadjuvante\b/i },
+  { label: 'Melhor Ator Coadjuvante', re: /\bmelhor ator coadjuvante\b/i },
+  { label: 'Melhor Filme Internacional', re: /\bmelhor filme internacional\b/i },
   { label: 'Melhor Filme de Animação', re: /\bmelhor (filme de )?anima(ç|c)ão\b/i },
-  { label: 'Melhor Documentário', re: /\bmelhor document(á|a)rio\b/i },
   { label: 'Melhor Documentário em Curta', re: /\bmelhor document(á|a)rio em curta\b/i },
   { label: 'Melhor Curta de Animação', re: /\bmelhor curta (de )?anima(ç|c)ão\b/i },
   { label: 'Melhor Curta Live Action', re: /\bmelhor curta (live action|de fic(ç|c)ão)\b/i },
+  { label: 'Melhor Maquiagem e Penteado', re: /\bmelhor maqui(a|e)gem( e)? penteado\b/i },
+  { label: 'Melhor Design de Produção', re: /\bmelhor design de produ(ç|c)ão\b/i },
+  { label: 'Melhor Atriz', re: /\bmelhor atriz\b/i },
+  { label: 'Melhor Ator', re: /\bmelhor ator\b/i },
+  { label: 'Melhor Diretor', re: /\bmelhor diretor\b/i },
   { label: 'Melhor Roteiro Original', re: /\bmelhor roteiro original\b/i },
   { label: 'Melhor Roteiro Adaptado', re: /\bmelhor roteiro adaptado\b/i },
+  { label: 'Melhor Trilha Sonora', re: /\bmelhor trilha sonora\b/i },
   { label: 'Melhor Fotografia', re: /\bmelhor fotografia\b/i },
   { label: 'Melhor Edição', re: /\bmelhor edi(c|ç)ão\b/i },
   { label: 'Melhor Montagem', re: /\bmelhor montagem\b/i },
-  { label: 'Melhor Som', re: /\bmelhor som\b/i },
   { label: 'Melhor Figurino', re: /\bmelhor figurino\b/i },
-  { label: 'Melhor Maquiagem e Penteado', re: /\bmelhor maqui(a|e)gem( e)? penteado\b/i },
-  { label: 'Melhor Design de Produção', re: /\bmelhor design de produ(ç|c)ão\b/i },
-  { label: 'Melhor Trilha Sonora', re: /\bmelhor trilha sonora\b/i },
-  { label: 'Melhor Canção Original', re: /\bmelhor can(ç|c)ão original\b/i },
-  { label: 'Melhor Filme Internacional', re: /\bmelhor filme internacional\b/i },
-  // adicione outras conforme necessário
+  { label: 'Melhor Som', re: /\bmelhor som\b/i },
+  { label: 'Melhor Filme', re: /\bmelhor filme\b(?!\s+internacional)/i },
+  { label: 'Melhor Documentário', re: /\bmelhor document(á|a)rio\b/i },
 ];
 
 const HEADINGS_SEL = 'h2, h3, h4, strong, b';
@@ -254,6 +252,7 @@ function parseArticleWithSelectors($: cheerio.CheerioAPI, sourceUrl: string): Sc
 
     logger.debug('listsSel count', { count: listsSel.length });
 
+      // <li> de listas
     listsSel.each((_j, li) => {
       const parsed = parseLiNodeWithCategory($, li, category);
       logger.debug('li parsed', { category, parsed });
@@ -274,9 +273,11 @@ function parseArticleWithSelectors($: cheerio.CheerioAPI, sourceUrl: string): Sc
     region.find('p').each((_j, p) => {
       const raw = normalizeText($(p).text());
       if (/^[•\-–—]\s*/.test(raw)) {
-        // Simula <li> parsing
-        const fakeLi = cheerio.load(`<li>${raw}</li>`).root().find('li')[0];
-        const parsed = parseLiNode($, fakeLi);
+          try {
+            const $liCtx = cheerio.load(`<li>${raw}</li>`);
+            const liEl = $liCtx('li')[0];
+            if (!liEl) return;
+            const parsed = parseLiNodeWithCategory($, liEl, category);
         logger.debug('p bullet parsed', { category, parsed });
         if (parsed.name && isProbableNomineeName(parsed.name)) {
           items.push({
@@ -285,13 +286,16 @@ function parseArticleWithSelectors($: cheerio.CheerioAPI, sourceUrl: string): Sc
             sourceUrl,
             meta: parsed.film_title ? { film_title: parsed.film_title } : undefined,
           });
+            }
+          } catch (err: any) {
+            logger.warn('bullet parse error', { err: err?.message });
         }
       }
     });
 
     // 1c) Fallback: elementos com role=listitem (acessibilidade)
     region.find('[role="listitem"]').each((_j, li) => {
-      const parsed = parseLiNode($, li);
+        const parsed = parseLiNodeWithCategory($, li, category);
       logger.debug('aria listitem parsed', { category, parsed });
       if (parsed.name && isProbableNomineeName(parsed.name)) {
         items.push({
@@ -309,7 +313,7 @@ function parseArticleWithSelectors($: cheerio.CheerioAPI, sourceUrl: string): Sc
   // 2) Fallback global: quando não há headings “categoria”, tentar listas globais
   if (items.length === 0) {
     root.find('ul > li, ol > li').each((_j, li) => {
-      const parsed = parseLiNode($, li);
+        const parsed = parseLiNodeWithCategory($, li, 'Indefinida');
       if (parsed.name && isProbableNomineeName(parsed.name)) {
         items.push({
           category: 'Indefinida',

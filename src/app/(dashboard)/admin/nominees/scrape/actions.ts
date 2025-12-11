@@ -128,6 +128,8 @@ export async function importFromGlobalScrape({ categoryId }: { categoryId?: stri
     });
     logger.info('filtered by category', { selectedKey, filteredCount: filtered.length });
   }
+  
+  filtered = filtered.filter((it) => !/leia nossa crítica/i.test(it.name) && !/\bcrítica\b/i.test(it.name));
 
   // Agrupar por categoria do banco (considerando sinônimos) — SEMPRE usa { names, metas }
   const groups = new Map<string, GroupEntry>();
