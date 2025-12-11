@@ -87,8 +87,8 @@ export async function importFromGlobalScrape({ categoryId }: { categoryId?: stri
     });
   }
 
-  // Agrupar por categoria (label normalizado)
-  const groups = new Map<string, string[]>();
+  // Agrupar por categoria do banco (considerando sinônimos)
+  const groups = new Map<string, { names: string[]; metas: Record<string, any>[] }>();
 
   for (const it of filtered) {
     const siteKey = normalize(it.category);
@@ -96,30 +96,38 @@ export async function importFromGlobalScrape({ categoryId }: { categoryId?: stri
     if (catMap.has(siteKey)) {
       const cat = catMap.get(siteKey)!;
       const list = groups.get(cat.id) ?? [];
-    list.push(it.name.trim());
+      list.push(it.name.trim());
       groups.set(cat.id, list);
       continue;
     }
     // Match por sinônimo
     let matchedId: string | null = null;
-    for (const [dbKey, cat] of catMap.entries()) {
-      const syns = CATEGORY_SYNONYMS[dbKey] ?? [];
-      if (siteKey === dbKey || syns.includes(siteKey)) {
-        matchedId = cat.id;
-        break;
+
+    // Match direto ou por sinônimo
+    if (catMap.has(siteKey)) {
+      matchedId = catMap.get(siteKey)!.id;
+    } else {
+      for (const [dbKey, cat] of catMap.entries()) {
+        const syns = CATEGORY_SYNONYMS[dbKey] ?? [];
+        if (siteKey === dbKey || syns.includes(siteKey)) {
+          matchedId = cat.id;
+          break;
+        }
       }
     }
+
     if (matchedId) {
-      const list = groups.get(matchedId) ?? [];
-      list.push(it.name.trim());
-      groups.set(matchedId, list);
+      const entry = groups.get(matchedId) ?? { names: [], metas: [] };
+      entry.names.push(it.name.trim());
+      entry.metas.push(it.meta ?? {});
+      groups.set(matchedId, entry);
     }
   }
 
   const summary: Array<{ category: string; category_id?: string; imported: number }> = [];
   let totalImported = 0;
 
-  for (const [catId, names] of groups) {
+  for (const [catId, group] of groups) {
     const cat = (categories ?? []).find(c => c.id === catId);
     if (!cat) {
       summary.push({ category: catId, imported: 0 });
@@ -133,12 +141,22 @@ export async function importFromGlobalScrape({ categoryId }: { categoryId?: stri
       .eq('category_id', cat.id);
 
     const existingSet = new Set((existing ?? []).map(n => normalize(n.name)));
-    const toInsert: Array<{ name: string; category_id: string }> = [];
+    const toInsert: Array<{ name: string; category_id: string; meta?: Record<string, any> }> = [];
 
-    for (const name of names) {
+    for (let i = 0; i < group.names.length; i++) {
+      const name = group.names[i];
+      const meta = group.metas[i] || {};
       const norm = normalize(name);
       if (!existingSet.has(norm)) {
-        toInsert.push({ name: name.trim(), category_id: cat.id });
+        // Se houver film_title, guarda em meta
+        const insertObj: { name: string; category_id: string; meta?: Record<string, any> } = {
+          name: name.trim(),
+          category_id: cat.id,
+        };
+        if (meta && typeof meta === 'object' && Object.keys(meta).length > 0) {
+          insertObj.meta = meta;
+        }
+        toInsert.push(insertObj);
         existingSet.add(norm);
       }
     }

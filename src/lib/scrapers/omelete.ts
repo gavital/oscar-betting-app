@@ -4,6 +4,7 @@ export type ScrapedNominee = {
   category: string;     // ex.: "Melhor Filme"
   name: string;         // ex.: "Oppenheimer"
   sourceUrl: string;    // URL do artigo do Omelete
+  meta?: { film_title?: string };
 };
 
 export type ScrapeReport = {
@@ -79,6 +80,74 @@ function extractNameFromLiText(raw: string): string {
   return t;
 }
 
+// Extrai “name” e “film_title” de um nó <li> ou texto de bullet
+function parseLiNode($: cheerio.CheerioAPI, li: cheerio.Element): { name?: string; film_title?: string } {
+  // Preferir textos em <a>, <strong>, <b>
+  const anchorOrStrong = $(li).find('a, strong, b').first();
+  let baseText = normalizeText(anchorOrStrong.length ? anchorOrStrong.text() : $(li).text());
+  baseText = baseText.replace(/^[•\-–—]\s*/, '');
+
+  // Se houver <em>/<i> com o título do filme
+  const em = $(li).find('em, i').first();
+  if (em.length) {
+    const film = normalizeText(em.text());
+    // Remover o trecho <em>/<i> do texto base, se ele estiver embutido
+    const nameOnly = normalizeText(baseText.replace(film, '')).replace(/[()]/g, '').trim();
+    return {
+      name: cleanName(nameOnly),
+      film_title: film || undefined,
+    };
+  }
+
+  // Padrões comuns: "Nome – Filme", "Nome - Filme", "Nome: Filme", "Nome (Filme)"
+  const separators = [' – ', ' - ', ':', ' ('];
+  let namePart = baseText;
+  let filmPart: string | undefined;
+
+  for (const sep of separators) {
+    const idx = baseText.indexOf(sep);
+    if (idx !== -1) {
+      namePart = baseText.slice(0, idx).trim();
+      filmPart = baseText.slice(idx + sep.length).trim();
+      // Remove fechamento de parênteses se veio de " ("
+      filmPart = filmPart?.replace(/\)$/,'').trim();
+      break;
+    }
+  }
+
+  // Se não achou, tenta padrão "Nome (Filme)" direto
+  if (!filmPart) {
+    const paren = baseText.match(/(.+?)\s*\((.+?)\)/);
+    if (paren) {
+      namePart = normalizeText(paren[1]);
+      filmPart = normalizeText(paren[2]);
+    }
+  }
+
+  return {
+    name: cleanName(namePart),
+    film_title: cleanFilm(filmPart),
+  };
+}
+
+function cleanName(s?: string): string | undefined {
+  if (!s) return undefined;
+  // Remove sufixos comuns e excesso de pontuação
+  let t = normalizeText(s);
+  t = t.replace(/[“”"']/g, '').trim();
+  return t.length >= 2 ? t : undefined;
+}
+
+function cleanFilm(s?: string): string | undefined {
+  if (!s) return undefined;
+  let t = normalizeText(s);
+  // Remove prefixos genéricos como "do filme", "do longa", etc.
+  t = t.replace(/^(do|da|de)\s+(filme|longa|obra)\s+/i, '').trim();
+  // Remover aspas e pontuação excessiva
+  t = t.replace(/[“”"']/g, '').trim();
+  return t.length >= 1 ? t : undefined;
+}
+
 // Seletores específicos para artigos “Lista completa”
 // Estratégia: localizar heading com nome da categoria e coletar as <li> subsequentes
 function parseArticleWithSelectors($: cheerio.CheerioAPI, sourceUrl: string): ScrapedNominee[] {
@@ -101,15 +170,23 @@ function parseArticleWithSelectors($: cheerio.CheerioAPI, sourceUrl: string): Sc
     // Região: todos os irmãos até próximo heading
     const region = $(el).nextUntil(HEADINGS_SEL);
 
-    // Preferir listas explícitas próximas
+    // Listas próximas (<ul>/<ol>)
     const closeList = $(el).nextAll('ul, ol').first();
-    const lists = region.add(closeList).find('ul > li, ol > li').add(region.filter('ul > li, ol > li'));
+
+    // Colete items de <li> em region e listas próximas
+    const lists = region.add(closeList)
+      .find('ul > li, ol > li')
+      .add(region.filter('ul > li, ol > li'));
+
     lists.each((_j, li) => {
-      const anchor = $(li).find('a, strong').first();
-      const baseText = anchor.length ? anchor.text() : $(li).text();
-      const name = extractNameFromLiText(baseText);
-      if (isProbableNomineeName(name)) {
-        items.push({ category, name, sourceUrl });
+      const parsed = parseLiNode($, li);
+      if (parsed.name && isProbableNomineeName(parsed.name)) {
+        items.push({
+          category,
+          name: parsed.name,
+          sourceUrl,
+          meta: parsed.film_title ? { film_title: parsed.film_title } : undefined,
+        });
       }
     });
 
@@ -117,18 +194,30 @@ function parseArticleWithSelectors($: cheerio.CheerioAPI, sourceUrl: string): Sc
     region.find('p').each((_j, p) => {
       const raw = normalizeText($(p).text());
       if (/^[•\-–—]\s*/.test(raw)) {
-        const name = extractNameFromLiText(raw);
-        if (isProbableNomineeName(name)) {
-          items.push({ category, name, sourceUrl });
+        // Simula <li> parsing
+        const fakeLi = cheerio.load(`<li>${raw}</li>`).root().find('li')[0];
+        const parsed = parseLiNode($, fakeLi);
+        if (parsed.name && isProbableNomineeName(parsed.name)) {
+          items.push({
+            category,
+            name: parsed.name,
+            sourceUrl,
+            meta: parsed.film_title ? { film_title: parsed.film_title } : undefined,
+          });
         }
       }
     });
 
     // 1c) Fallback: elementos com role=listitem (acessibilidade)
     region.find('[role="listitem"]').each((_j, li) => {
-      const name = extractNameFromLiText($(li).text());
-      if (isProbableNomineeName(name)) {
-        items.push({ category, name, sourceUrl });
+      const parsed = parseLiNode($, li);
+      if (parsed.name && isProbableNomineeName(parsed.name)) {
+        items.push({
+          category,
+          name: parsed.name,
+          sourceUrl,
+          meta: parsed.film_title ? { film_title: parsed.film_title } : undefined,
+        });
       }
     });
   });
@@ -136,9 +225,14 @@ function parseArticleWithSelectors($: cheerio.CheerioAPI, sourceUrl: string): Sc
   // 2) Fallback global: quando não há headings “categoria”, tentar listas globais
   if (items.length === 0) {
     root.find('ul > li, ol > li').each((_j, li) => {
-      const name = extractNameFromLiText($(li).text());
-      if (isProbableNomineeName(name)) {
-        items.push({ category: 'Indefinida', name, sourceUrl });
+      const parsed = parseLiNode($, li);
+      if (parsed.name && isProbableNomineeName(parsed.name)) {
+        items.push({
+          category: 'Indefinida',
+          name: parsed.name,
+          sourceUrl,
+          meta: parsed.film_title ? { film_title: parsed.film_title } : undefined,
+        });
       }
     });
   }

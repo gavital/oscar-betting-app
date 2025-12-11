@@ -12,6 +12,7 @@ import { ConfirmDeleteNomineeForm } from './nominees/_components/ConfirmDeleteNo
 import WinnerSetForm from './nominees/_components/WinnerSetForm'
 import { importNominees, createNominee, updateNominee, enrichNomineeWithTMDB } from './nominees/actions'
 import { getTmdbImageUrl } from '@/lib/tmdb/client'
+import { ImportAllFromGlobalButton } from './settings/_components/ImportAllFromGlobalButton';
 
 // import { setCeremonyYear } from './settings/actions'
 
@@ -399,21 +400,24 @@ export default async function AdminUnifiedPage({
           </div>
 
           {/* <div className="border-t pt-6"> */}
-            {/* <h3 className="text-lg font-semibold">RSS Feeds</h3>
+          {/* <h3 className="text-lg font-semibold">RSS Feeds</h3>
             {feedsErr ? (
               <div className="text-sm text-red-600">Erro ao carregar feeds: {feedsErr.message}</div>
             ) : (
               <SettingsRSSFeedsForm categories={categories ?? []} feeds={feeds ?? []} />
             )} */}
-            <div className="border-t pt-6">
-              <h3 className="text-lg font-semibold">Global Scrape Sources</h3>
-              {scrapeErr ? (
-                <div className="text-sm text-red-600">Erro ao carregar fontes: {scrapeErr.message}</div>
-              ) : (
-                <SettingsScrapeSourcesForm sources={scrapeSources ?? []} />
-              )}
+          <div className="border-t pt-6">
+            <h3 className="text-lg font-semibold">Global Scrape Sources</h3>
+            <div className="mb-3">
+              <ImportAllFromGlobalButton />
             </div>
-            {/* <div className="border-t pt-6">
+            {scrapeErr ? (
+              <div className="text-sm text-red-600">Erro ao carregar fontes: {scrapeErr.message}</div>
+            ) : (
+              <SettingsScrapeSourcesForm sources={scrapeSources ?? []} />
+            )}
+          </div>
+          {/* <div className="border-t pt-6">
               <h3 className="text-lg font-semibold">Ano da cerimônia</h3>
               <form action={setCeremonyYear} className="flex items-center gap-2">
                 <Label htmlFor="ceremony_year">Ano</Label>
@@ -426,7 +430,7 @@ export default async function AdminUnifiedPage({
                 <Button type="submit">Salvar</Button>
               </form>
             </div> */}
-            {/* <div className="border-t pt-6">
+          {/* <div className="border-t pt-6">
               <h3 className="text-lg font-semibold">Feed Interno (Omelete)</h3>
               <SettingsInternalFeed year={Number(ceremonyYearSetting?.value) || new Date().getFullYear()} />
             </div> */}
