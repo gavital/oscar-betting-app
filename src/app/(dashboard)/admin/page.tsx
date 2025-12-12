@@ -24,10 +24,10 @@ type AdminSearchParams = { categoryId?: string }
 export default async function AdminUnifiedPage({
   searchParams,
 }: {
-  searchParams?: Promise<AdminSearchParams>
+  searchParams?: AdminSearchParams
 }) {
   const supabase = await createServerSupabaseClient()
-  const sp = (await searchParams) ?? {}
+  const sp = searchParams ?? {}
   const selectedCategoryId = sp.categoryId ?? null
 
   // Ano corrente
@@ -116,10 +116,6 @@ export default async function AdminUnifiedPage({
     const query = new URLSearchParams(entries as any).toString()
     return query ? `?${query}` : ''
   }
-
-  const { data: feeds, error: feedsErr } = await supabase
-    .from('rss_feeds')
-    .select('id, category_id, url, keywords, enabled, source_name, language')
 
   const { data: scrapeSources, error: scrapeErr } = await supabase
     .from('scrape_sources')
@@ -247,7 +243,8 @@ export default async function AdminUnifiedPage({
                 )
               })}
             </div>
-          </>
+
+          </div>
         )}
 
         {selectedCategoryId && selectedCategory && (
@@ -388,24 +385,7 @@ export default async function AdminUnifiedPage({
             </section>
           </div>
         )}
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="text-sm text-foreground/80">Publicação dos resultados:</div>
-            {resultsPublished ? (
-              <span className="inline-flex items-center text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded">
-                RESULTADOS PUBLICADOS
-              </span>
-            ) : (
-              <span className="inline-flex items-center text-xs bg-muted text-muted-foreground px-2 py-1 rounded">
-                RESULTADOS OCULTOS
-              </span>
-            )}
-          </div>
-
-          <SettingsResultsForm currentPublished={!!resultsPublished} />
-        </div>
+      </section>
     </div>
-        </section >
-    </div >
   )
 }

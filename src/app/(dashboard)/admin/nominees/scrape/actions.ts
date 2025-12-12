@@ -57,25 +57,26 @@ export async function importFromGlobalScrape({ categoryId }: { categoryId?: stri
   if (!sources || sources.length === 0) {
     return { ok: false, error: 'No global scrape sources configured' };
   }
-
-  // Ler categorias para mapear labels -> category_id
-  const { data: categories, error: catErr } = await supabase
-    .from('categories')
-    .select('id, name, is_active');
+    // Descobre ano corrente da edição
+    const { data: yearSetting } = await supabase
+      .from('app_settings')
+      .select('value')
+      .eq('key', 'ceremony_year')
+      .maybeSingle();
+    const currentYear = Number(yearSetting?.value) || new Date().getFullYear();
+  
+    // Ler categorias da edição corrente para mapear labels -> category_id
+    const { data: categories, error: catErr } = await supabase
+      .from('categories')
+      .select('id, name, is_active, ceremony_year')
+      .eq('ceremony_year', currentYear);  
 
   if (catErr) {
     logger.error('categories load error', { error: catErr.message });
     return { ok: false, error: catErr.message };
   }
-  logger.info('categories loaded', { count: categories?.length ?? 0 });
+    logger.info('categories loaded', { count: categories?.length ?? 0, currentYear });
 
-  // Descobre ano corrente da edição
-  const { data: yearSetting } = await supabase
-    .from('app_settings')
-    .select('value')
-    .eq('key', 'ceremony_year')
-    .maybeSingle();
-  const currentYear = Number(yearSetting?.value) || new Date().getFullYear();
 
   // Mapa de categorias: chave normalizada -> { id, name, ceremony_year }
   const catMap = new Map<string, { id: string; name: string; ceremony_year: number }>();
