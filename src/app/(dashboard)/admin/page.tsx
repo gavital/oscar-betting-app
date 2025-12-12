@@ -243,8 +243,7 @@ export default async function AdminUnifiedPage({
                 )
               })}
             </div>
-
-          </div>
+          </>
         )}
 
         {selectedCategoryId && selectedCategory && (
@@ -386,6 +385,6 @@ export default async function AdminUnifiedPage({
           </div>
         )}
       </section>
-    </div>
+    </div >
   )
 }
