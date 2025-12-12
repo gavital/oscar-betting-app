@@ -38,7 +38,8 @@ export default async function AdminUnifiedPage({
   // Categorias
   const { data: categories, error: categoriesErr } = await supabase
     .from('categories')
-    .select('id, name, max_nominees, is_active')
+    .select('id, name, max_nominees, is_active, ceremony_year')
+    .eq('ceremony_year', currentYear)
     .order('name')
 
   if (categoriesErr) {
@@ -80,6 +81,8 @@ export default async function AdminUnifiedPage({
     .eq('key', 'ceremony_year')
     .maybeSingle()
 
+  const currentYear = Number(ceremonyYearSetting?.value) || new Date().getFullYear()
+
   const resultsPublished =
     resultsSetting?.value === true ||
     resultsSetting?.value === 'true' ||
@@ -107,8 +110,9 @@ export default async function AdminUnifiedPage({
 
     const { data: nom } = await supabase
       .from('nominees')
-      .select('id, name, meta, tmdb_data, is_winner')
+      .select('id, name, meta, tmdb_data, is_winner, ceremony_year')
       .eq('category_id', selectedCategoryId)
+      .eq('ceremony_year', currentYear)
       .order('name')
 
     categoryNominees = nom ?? []
@@ -247,7 +251,7 @@ export default async function AdminUnifiedPage({
                   return (
                     <Link
                       key={cat.id}
-                      href={`/admin${qs({ tab: 'nominees', categoryId: cat.id })}`}
+                      href={/admin?categoryId=${cat.id}}
                       className="border rounded p-4 bg-card hover:bg-muted"
                     >
                       <div className="flex items-center justify-between">

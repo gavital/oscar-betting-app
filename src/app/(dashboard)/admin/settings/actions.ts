@@ -81,9 +81,28 @@ export async function purgeCurrentEdition() {
 
 
 export async function setBetsOpen(formData: FormData): Promise<ActionResult<{ open: boolean }>> {
+  const adminCheck = await requireAdmin()
+  if (!adminCheck?.supabase) return { ok: false, error: { code: 'AUTH_NOT_AUTHENTICATED', message: 'Unauthorized' } }
+  const { supabase } = adminCheck
+
+  const raw = String(formData.get('open') ?? '').toLowerCase()
+  if (!raw) {
+    return { ok: false, error: { code: 'VALIDATION_NO_FIELDS', message: 'Valor de open é obrigatório', field: 'open' } }
+  }
+  const open = ['true', 'on', '1', 'yes'].includes(raw)
+
+  const { error: upErr } = await supabase
+    .from('app_settings')
+    .upsert({ key: 'bets_open', value: open }, { onConflict: 'key' })
+
+  if (upErr) {
+    return { ok: false, error: { code: 'DB_UPDATE_ERROR', message: upErr.message } }
+  }
+
   revalidatePath('/bets')
-  revalidatePath('/bets/[categoryId]') // revalida páginas dinâmicas recarregadas
-  revalidatePath('/') // se homepage tiver status global
+  revalidatePath('/bets/[categoryId]')
+  revalidatePath('/')
+  revalidatePath('/admin')
   return { ok: true, data: { open } }
 }
 

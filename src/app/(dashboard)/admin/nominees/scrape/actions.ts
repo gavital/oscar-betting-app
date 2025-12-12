@@ -75,6 +75,8 @@ export async function importFromGlobalScrape({ categoryId }: { categoryId?: stri
     catMap.set(normalize(c.name), { id: c.id, name: c.name });
   }
 
+
+  // Descobre ano corrente da edição
   const { data: yearSetting } = await supabase
     .from('app_settings')
     .select('value')
@@ -91,7 +93,7 @@ export async function importFromGlobalScrape({ categoryId }: { categoryId?: stri
   async function resolveOrCreateCategory(siteLabelRaw: string): Promise<{ id: string; name: string } | null> {
     const siteLabelNorm = normalize(siteLabelRaw);
 
-    // 1) Match direto no mapa + validação de ano no banco
+    // 1) Cache + validação de ano
     const cached = catMap.get(siteLabelNorm);
     if (cached) {
       const { data: onDb } = await supabase
@@ -102,7 +104,7 @@ export async function importFromGlobalScrape({ categoryId }: { categoryId?: stri
       if (onDb?.ceremony_year === currentYear) return { id: onDb.id, name: onDb.name };
     }
 
-    // 2) Match direto por nome e ano
+    // 2) Match por nome + ano
     const { data: existingCat } = await supabase
       .from('categories')
       .select('id, name')
@@ -127,7 +129,7 @@ export async function importFromGlobalScrape({ categoryId }: { categoryId?: stri
       }
     }
 
-    // 4) Criar nova categoria
+    // 4) Criar nova categoria para o ano corrente
     const nameToCreate = siteLabelRaw.trim();
     const { data: inserted, error: insCatErr } = await supabase
       .from('categories')
@@ -185,7 +187,7 @@ export async function importFromGlobalScrape({ categoryId }: { categoryId?: stri
 
   console.info('[scrape] categories detected from site:', Array.from(countsByCategorySite.entries()));
 
-  // Filtro opcional por categoryId (se o botão for por categoria)
+  // Filtro opcional por categoria selecionada
   let filtered = items;
   if (categoryId) {
     // pega o nome da categoria selecionada e filtra por label equivalente
@@ -198,7 +200,6 @@ export async function importFromGlobalScrape({ categoryId }: { categoryId?: stri
 
     filtered = filtered.filter((it) => {
       const siteKey = normalize(it.category);
-      if (siteKey === selectedKey) return true;
       const syns = CATEGORY_SYNONYMS[selectedKey] ?? [];
       const matched = siteKey === selectedKey || syns.includes(siteKey);
       if (!matched) {
@@ -221,8 +222,21 @@ export async function importFromGlobalScrape({ categoryId }: { categoryId?: stri
       .replace(/\(\s*\)/g, '')      // remove "()"
           .replace(/\u00A0/g, ' ')                // NBSP -> espaço
           .replace(/[–—]/g, '-')                  // dashes -> hífen
+          .replace(/[“”"']/g, '')
           .replace(/\s+/g, ' ')                   // colapsa espaços
           .trim();
+
+          let film = (it.meta as any)?.film_title ?? '';
+          film = film
+            .replace(/\([^)]*crítica[^)]*\)/gi, '')
+            .replace(/\(\s*\)/g, '')
+            .replace(/\u00A0/g, ' ')
+            .replace(/[–—]/g, '-')
+            .replace(/[“”"']/g, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+  
+          const cleanMeta = film ? { film_title: film } : {};
 
         // Garante meta como objeto (nunca null/undefined)
         const cleanMeta =
@@ -243,22 +257,19 @@ export async function importFromGlobalScrape({ categoryId }: { categoryId?: stri
     });
   }
 
-
-
-  // Agrupar por categoria do banco (considerando sinônimos) — SEMPRE usa { names, metas }
+  // Agrupar por categoria (criando se necessário)
   const groups = new Map<string, GroupEntry>();
 
   for (const it of filtered) {
-    const siteKey = normalize(it.category);
-    const catId = resolveCategoryId(siteKey);
-    if (!catId) {
-      logger.warn('unresolved category', { siteKey, name: it.name });
+    const resolved = await resolveOrCreateCategory(it.category);
+    if (!resolved) {
+      logger.warn('unresolved category', { siteKey: normalize(it.category), name: it.name });
       continue;
     }
-    const entry = groups.get(catId) ?? { names: [], metas: [] };
+    const entry = groups.get(resolved.id) ?? { names: [], metas: [] };
     entry.names.push(it.name.trim());
     entry.metas.push(it.meta ?? {});
-    groups.set(catId, entry);
+    groups.set(resolved.id, entry);
   }
 
   logger.info(
@@ -270,18 +281,13 @@ export async function importFromGlobalScrape({ categoryId }: { categoryId?: stri
     }))
   );
 
+  // Inserção por categoria (com ceremony_year)
   const summary: Array<{ category: string; category_id?: string; imported: number }> = [];
   let totalImported = 0;
 
   for (const [catId, group] of groups) {
-    const cat = (categories ?? []).find(c => c.id === catId);
-    if (!cat) {
-      logger.warn('group without category', { catId });
-      summary.push({ category: catId, imported: 0 });
-      continue;
-    }
+    const cat = (categories ?? []).find(c => c.id === catId) || { id: catId, name: (Array.from(catMap.values()).find(v => v.id === catId)?.name ?? 'Unknown') };
 
-    // Segurança: garantir estrutura esperada
     const names = Array.isArray(group?.names) ? group.names : [];
     const metas = Array.isArray(group?.metas) ? group.metas : [];
     logger.info('prepare insert', { category: cat.name, namesCount: names.length });
@@ -307,12 +313,12 @@ export async function importFromGlobalScrape({ categoryId }: { categoryId?: stri
 
       const norm = normalize(name);
       if (!existingSet.has(norm)) {
-        const insertObj = {
+        toInsert.push({
           name: name.trim(),
           category_id: cat.id,
           meta: (meta && typeof meta === 'object') ? { ...meta } : {},
           ceremony_year: currentYear,
-        };
+        });
         toInsert.push(insertObj);
         existingSet.add(norm);
       } else {
