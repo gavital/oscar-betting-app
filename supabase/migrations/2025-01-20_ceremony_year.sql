@@ -15,5 +15,8 @@ create index if not exists categories_ceremony_year_idx on public.categories (ce
 create index if not exists nominees_ceremony_year_idx on public.nominees (ceremony_year);
 create index if not exists bets_ceremony_year_idx on public.bets (ceremony_year);
 
--- Opcional: evitar duplicação por nome/ano nas categorias
--- create unique index if not exists categories_name_year_uidx on public.categories (lower(name), ceremony_year);
+-- Opcional: garantir unicidade por nome/ano
+-- create unique index if not exists categories_name_year_uidx
+--   on public.categories (lower(name), ceremony_year);
+
+-- Observação: execute essa migração no Supabase antes de rodar novas importações

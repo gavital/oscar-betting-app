@@ -17,46 +17,46 @@ type ActionError = {
 
 type ActionResult<T = void> = { ok: true; data?: T } | { ok: false; error: ActionError }
 
-export async function setCeremonyYear(formData: FormData) {
+  export async function setCeremonyYear(formData: FormData): Promise<ActionResult> {
   const year = Number(formData.get('ceremony_year'));
   if (!year || year < 1900) {
-    return { ok: false, error: 'INVALID_YEAR' };
+      return { ok: false, error: { code: 'INVALID_YEAR', message: 'Ano inválido' } };
   }
   const adminCheck = await requireAdmin();
-  if (!adminCheck?.supabase) return { ok: false, error: 'Unauthorized' };
+    if (!adminCheck?.supabase) return { ok: false, error: { code: 'AUTH_NOT_AUTHENTICATED', message: 'Unauthorized' } };
   const { supabase } = adminCheck;
 
   const { error } = await supabase
     .from('app_settings')
     .upsert({ key: 'ceremony_year', value: year }, { onConflict: 'key' });
 
-  if (error) return { ok: false, error: error.message };
+    if (error) return { ok: false, error: { code: 'DB_UPDATE_ERROR', message: error.message } };
 
   revalidatePath('/admin');
   return { ok: true };
 }
 
-export async function startNewEdition(formData: FormData) {
+  export async function startNewEdition(formData: FormData): Promise<ActionResult> {
   const year = Number(formData.get('ceremony_year'));
   if (!year || year < 1900) {
-    return { ok: false, error: 'INVALID_YEAR' };
+      return { ok: false, error: { code: 'INVALID_YEAR', message: 'Ano inválido' } };
   }
   const adminCheck = await requireAdmin();
-  if (!adminCheck?.supabase) return { ok: false, error: 'Unauthorized' };
+    if (!adminCheck?.supabase) return { ok: false, error: { code: 'AUTH_NOT_AUTHENTICATED', message: 'Unauthorized' } };
   const { supabase } = adminCheck;
 
   const { error: settingsErr } = await supabase
     .from('app_settings')
     .upsert({ key: 'ceremony_year', value: year }, { onConflict: 'key' });
-  if (settingsErr) return { ok: false, error: settingsErr.message };
+    if (settingsErr) return { ok: false, error: { code: 'DB_UPDATE_ERROR', message: settingsErr.message } };
 
   revalidatePath('/admin');
   return { ok: true };
 }
 
-export async function purgeCurrentEdition() {
+  export async function purgeCurrentEdition(): Promise<ActionResult> {
   const adminCheck = await requireAdmin();
-  if (!adminCheck?.supabase) return { ok: false, error: 'Unauthorized' };
+    if (!adminCheck?.supabase) return { ok: false, error: { code: 'AUTH_NOT_AUTHENTICATED', message: 'Unauthorized' } };
   const { supabase } = adminCheck;
 
   const { data: yearSetting } = await supabase
@@ -67,18 +67,17 @@ export async function purgeCurrentEdition() {
   const year = Number(yearSetting?.value) || new Date().getFullYear();
 
   const { error: betsErr } = await supabase.from('bets').delete().eq('ceremony_year', year);
-  if (betsErr) return { ok: false, error: betsErr.message };
+    if (betsErr) return { ok: false, error: { code: 'DB_DELETE_ERROR', message: betsErr.message } };
 
   const { error: nomineesErr } = await supabase.from('nominees').delete().eq('ceremony_year', year);
-  if (nomineesErr) return { ok: false, error: nomineesErr.message };
+    if (nomineesErr) return { ok: false, error: { code: 'DB_DELETE_ERROR', message: nomineesErr.message } };
 
   const { error: categoriesErr } = await supabase.from('categories').delete().eq('ceremony_year', year);
-  if (categoriesErr) return { ok: false, error: categoriesErr.message };
+    if (categoriesErr) return { ok: false, error: { code: 'DB_DELETE_ERROR', message: categoriesErr.message } };
 
   revalidatePath('/admin');
   return { ok: true };
 }
-
 
 export async function setBetsOpen(formData: FormData): Promise<ActionResult<{ open: boolean }>> {
   const adminCheck = await requireAdmin()

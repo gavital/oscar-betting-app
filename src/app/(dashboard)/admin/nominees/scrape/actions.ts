@@ -69,13 +69,6 @@ export async function importFromGlobalScrape({ categoryId }: { categoryId?: stri
   }
   logger.info('categories loaded', { count: categories?.length ?? 0 });
 
-  // Mapa de categorias do banco: chave normalizada -> { id, name }
-  const catMap = new Map<string, { id: string; name: string }>();
-  for (const c of categories ?? []) {
-    catMap.set(normalize(c.name), { id: c.id, name: c.name });
-  }
-
-
   // Descobre ano corrente da edição
   const { data: yearSetting } = await supabase
     .from('app_settings')
@@ -150,29 +143,6 @@ export async function importFromGlobalScrape({ categoryId }: { categoryId?: stri
     return null;
   }
 
-  // Helper: resolve id da categoria no banco a partir do label do site (considerando sinônimos)
-  function resolveCategoryId(siteLabelNorm: string): string | null {
-    // match direto
-    if (catMap.has(siteLabelNorm)) {
-      return catMap.get(siteLabelNorm)!.id;
-    }
-    // match por sinônimo
-    for (const [dbKey, cat] of catMap.entries()) {
-      const syns = CATEGORY_SYNONYMS[dbKey] ?? [];
-      if (siteLabelNorm === dbKey || syns.includes(siteLabelNorm)) {
-        return cat.id;
-      }
-    }
-    // fallback contém (tolerante)
-    for (const [dbKey, cat] of catMap.entries()) {
-      if (siteLabelNorm.includes(dbKey) || dbKey.includes(siteLabelNorm)) {
-        logger.debug('resolveCategoryId fallback contains', { siteLabelNorm, dbKey, catId: cat.id });
-        return cat.id;
-      }
-    }
-    return null;
-  }
-
   // Scrape de cada fonte e consolidação por categoria
   const urls = sources.map((s) => s.url);
   const { items, processed, skipped } = await scrapeOmeleteArticles(urls);
@@ -219,28 +189,24 @@ export async function importFromGlobalScrape({ categoryId }: { categoryId?: stri
         // Remove qualquer parêntese contendo “crítica” e normaliza espaços/dashes
         const cleanName = (it.name ?? '')
           .replace(/\([^)]*crítica[^)]*\)/gi, '') // remove (…crítica…)
-      .replace(/\(\s*\)/g, '')      // remove "()"
+          .replace(/\(\s*\)/g, '')      // remove "()"
           .replace(/\u00A0/g, ' ')                // NBSP -> espaço
           .replace(/[–—]/g, '-')                  // dashes -> hífen
           .replace(/[“”"']/g, '')
           .replace(/\s+/g, ' ')                   // colapsa espaços
           .trim();
 
-          let film = (it.meta as any)?.film_title ?? '';
-          film = film
-            .replace(/\([^)]*crítica[^)]*\)/gi, '')
-            .replace(/\(\s*\)/g, '')
-            .replace(/\u00A0/g, ' ')
-            .replace(/[–—]/g, '-')
-            .replace(/[“”"']/g, '')
-            .replace(/\s+/g, ' ')
-            .trim();
-  
-          const cleanMeta = film ? { film_title: film } : {};
+        let film = (it.meta as any)?.film_title ?? '';
+        film = film
+          .replace(/\([^)]*crítica[^)]*\)/gi, '')
+          .replace(/\(\s*\)/g, '')
+          .replace(/\u00A0/g, ' ')
+          .replace(/[–—]/g, '-')
+          .replace(/[“”"’']/g, '')
+          .replace(/\s+/g, ' ')
+          .trim();
 
-        // Garante meta como objeto (nunca null/undefined)
-        const cleanMeta =
-          it.meta && typeof it.meta === 'object' ? { ...it.meta } : {};
+        const cleanMeta = film ? { film_title: film } : {};
 
         return { ...it, name: cleanName, meta: cleanMeta };
       })
@@ -313,42 +279,12 @@ export async function importFromGlobalScrape({ categoryId }: { categoryId?: stri
 
       const norm = normalize(name);
       if (!existingSet.has(norm)) {
-        toInsert.push({
+        const insertObj = {
           name: name.trim(),
           category_id: cat.id,
           meta: (meta && typeof meta === 'object') ? { ...meta } : {},
           ceremony_year: currentYear,
-        });
-        toInsert.push(insertObj);
-        existingSet.add(norm);
-      } else {
-        logger.debug('duplicate skip', { category: cat.name, name });
-      }
-    }
-
-
-    const existingSet = new Set((existing ?? []).map(n => normalize(n.name)));
-    const toInsert: Array<{ name: string; category_id: string; meta: Record<string, any> }> = [];
-
-    for (let i = 0; i < names.length; i++) {
-      const name = names[i];
-      const meta = metas[i] || {};
-
-      const norm = normalize(name);
-
-      if (!existingSet.has(norm)) {
-        // Sempre incluir meta, garantindo objeto não nulo
-        const insertObj: { name: string; category_id: string; meta: Record<string, any> } = {
-          name: name.trim(),
-          category_id: cat.id,
-          meta: {},
         };
-
-        if (meta && typeof meta === 'object') {
-          // copia raso para evitar referência inesperada
-          insertObj.meta = { ...meta };
-        }
-
         toInsert.push(insertObj);
         existingSet.add(norm);
       } else {
