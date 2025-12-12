@@ -22,7 +22,7 @@ const CATEGORY_PATTERNS_PT: Array<{ label: string; re: RegExp }> = [
   { label: 'Melhor Documentário em Curta', re: /\bmelhor document(á|a)rio em curta\b/i },
   { label: 'Melhor Curta de Animação', re: /\bmelhor curta (de )?anima(ç|c)ão\b/i },
   { label: 'Melhor Curta Live Action', re: /\bmelhor curta (live action|de fic(ç|c)ão)\b/i },
-  { label: 'Melhor Maquiagem e Penteado', re: /\bmelhor maqui(a|e)gem( e)? penteado\b/i },
+  { label: 'Melhor Maquiagem e Penteado', re: /\bmelhor maquiagem(?: e)? (?:penteado|cabelo)\b/i },
   { label: 'Melhor Design de Produção', re: /\bmelhor design de produ(ç|c)ão\b/i },
   { label: 'Melhor Atriz', re: /\bmelhor atriz\b/i },
   { label: 'Melhor Ator', re: /\bmelhor ator\b/i },
@@ -258,17 +258,21 @@ function cleanName(s?: string): string | undefined {
 function cleanFilm(s?: string): string | undefined {
   if (!s) return undefined;
   let t = normalizeText(s);
-  // remove any "(...crítica...)" e parênteses vazios
+  // Remove "(...crítica...)" e parênteses vazios
   t = t.replace(/\([^)]*crítica[^)]*\)/gi, '');
   t = t.replace(/\(\s*\)/g, ''); // remove "()"
-  // remover aspas, colapsar espaços
-  t = t.replace(/[“”"']/g, '').replace(/\s+/g, ' ').trim();
+
+  // Normaliza NBSP, dashes e aspas; colapsa espaços
+  t = t.replace(/\u00A0/g, ' ');
+  t = t.replace(/[–—]/g, '-');
+  t = t.replace(/[“”"']/g, '');
+  t = t.replace(/\s+/g, ' ').trim();
 
   // Remove prefixos genéricos como "do filme", "do longa", etc.
   t = t.replace(/^(do|da|de)\s+(filme|longa|obra)\s+/i, '').trim();
-  // Remover aspas e pontuação excessiva
-  t = t.replace(/[“”"']/g, '').trim();
-  if (!t) t.length >= 1 ? t : undefined;
+
+  // Se vazio após limpeza, retorne undefined; senão retorne o valor limpo
+  return t.length > 0 ? t : undefined;
 }
 
 // Seletores específicos para artigos “Lista completa”
