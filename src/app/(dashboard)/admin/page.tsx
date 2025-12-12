@@ -13,8 +13,8 @@ import WinnerSetForm from './nominees/_components/WinnerSetForm'
 import { importNominees, createNominee, updateNominee, enrichNomineeWithTMDB } from './nominees/actions'
 import { getTmdbImageUrl } from '@/lib/tmdb/client'
 import { ImportAllFromGlobalButton } from './settings/_components/ImportAllFromGlobalButton';
+import { setCeremonyYear, startNewEdition, purgeCurrentEdition } from './settings/actions'
 
-// import { setCeremonyYear } from './settings/actions'
 
 import { SettingsScrapeSourcesForm } from './settings/_components/SettingsScrapeSourcesForm'
 import { ImportFromGlobalPageButton } from './nominees/_components/ImportFromGlobalPageButton'
@@ -138,50 +138,93 @@ export default async function AdminUnifiedPage({
     <div className="space-y-6">
       {/* Header + Abas */}
       <div className="border-b pb-4">
-        <h1 className="text-2xl font-bold">Painel Administrativo</h1>
-        <p className="text-sm text-muted-foreground">Gerencie categorias, indicados e configurações</p>
-
-        <div className="mt-4 flex items-center gap-2">
-          <Link href={`/admin${qs({ tab: 'categories', categoryId: undefined })}`}>
-            <button
-              aria-pressed={activeTab === 'categories'}
-              className={`border rounded px-3 py-2 text-sm ${activeTab === 'categories' ? 'bg-muted' : 'bg-card hover:bg-muted'}`}
-            >
-              Categorias
-            </button>
-          </Link>
-
-          <Link href={`/admin${qs({ tab: 'nominees' })}`}>
-            <button
-              aria-pressed={activeTab === 'nominees'}
-              className={`border rounded px-3 py-2 text-sm ${activeTab === 'nominees' ? 'bg-muted' : 'bg-card hover:bg-muted'}`}
-            >
-              Indicados
-            </button>
-          </Link>
-
-          <Link href={`/admin${qs({ tab: 'settings', categoryId: undefined })}`}>
-            <button
-              aria-pressed={activeTab === 'settings'}
-              className={`border rounded px-3 py-2 text-sm ${activeTab === 'settings' ? 'bg-muted' : 'bg-card hover:bg-muted'}`}
-            >
-              Configurações
-            </button>
-          </Link>
-        </div>
+        <h1 className="text-2xl font-bold">Administração</h1>
+        <p className="text-sm text-muted-foreground">Configurações, categorias e indicados em um só lugar</p>
       </div>
+
+      <section className="space-y-6 mt-4">
+        <h2 className="text-lg font-semibold">Configurações Globais</h2>
+
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="text-sm text-foreground/80">Estado atual:</div>
+            {betsOpen ? (
+              <span className="inline-flex items-center text-xs bg-green-100 text-green-700 px-2 py-1 rounded">
+                APOSTAS ABERTAS
+              </span>
+            ) : (
+              <span className="inline-flex items-center text-xs bg-red-100 text-red-700 px-2 py-1 rounded">
+                APOSTAS FECHADAS
+              </span>
+            )}
+          </div>
+          <SettingsBetsForm currentOpen={!!betsOpen} />
+        </div>
+
+        <div className="flex items-center justify-between border-t pt-6">
+          <div>
+            <div className="text-sm text-foreground/80">Publicação dos resultados:</div>
+            {resultsPublished ? (
+              <span className="inline-flex items-center text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded">
+                RESULTADOS PUBLICADOS
+              </span>
+            ) : (
+              <span className="inline-flex items-center text-xs bg-muted text-muted-foreground px-2 py-1 rounded">
+                RESULTADOS OCULTOS
+              </span>
+            )}
+          </div>
+          <SettingsResultsForm currentPublished={!!resultsPublished} />
+        </div>
+
+        <div className="border-t pt-6">
+          <h3 className="text-lg font-semibold">Edição da cerimônia</h3>
+          <form action={setCeremonyYear} className="flex items-center gap-2">
+            <Label htmlFor="ceremony_year">Ano</Label>
+            <Input
+              id="ceremony_year"
+              name="ceremony_year"
+              type="number"
+              defaultValue={Number(ceremonyYearSetting?.value) || new Date().getFullYear()}
+            />
+            <Button type="submit">Salvar</Button>
+          </form>
+
+          <div className="mt-3 flex items-center gap-3">
+            <form action={startNewEdition}>
+              <input type="hidden" name="ceremony_year" value={Number(ceremonyYearSetting?.value) || new Date().getFullYear()} />
+              <Button type="submit" variant="outline">Nova Edição (mudar ano)</Button>
+            </form>
+            <form action={purgeCurrentEdition}>
+              <Button type="submit" variant="destructive">Limpar dados da edição atual</Button>
+            </form>
+          </div>
+          <p className="text-xs text-muted-foreground mt-2">
+            Nova edição altera o ano e mantém edições passadas; Limpar dados remove categorias, indicados e apostas apenas do ano atual.
+          </p>
+        </div>
+
+        <div className="border-t pt-6">
+          <h3 className="text-lg font-semibold">Fontes (Global Scrape)</h3>
+          <div className="mb-3">
+            <ImportAllFromGlobalButton />
+          </div>
+          {scrapeErr ? (
+            <div className="text-sm text-red-600">Erro ao carregar fontes: {scrapeErr.message}</div>
+          ) : (
+            <SettingsScrapeSourcesForm sources={scrapeSources ?? []} />
+          )}
+        </div>
+      </section>
 
       {/* Aba: Categorias */}
       {activeTab === 'categories' && (
-        <section className="space-y-4">
+        <section className="space-y-4 mt-8">
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-lg font-semibold">Categorias do Oscar</h2>
-              <p className="text-sm text-muted-foreground">Ative/desative e edite as categorias</p>
+              <p className="text-sm text-muted-foreground">Ative/desative e veja os indicados</p>
             </div>
-            <Link href="/admin/categories/new">
-              <Button>Nova Categoria</Button>
-            </Link>
           </div>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {(categories ?? []).map((category) => (

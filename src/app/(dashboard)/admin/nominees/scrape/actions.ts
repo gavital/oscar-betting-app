@@ -75,6 +75,79 @@ export async function importFromGlobalScrape({ categoryId }: { categoryId?: stri
     catMap.set(normalize(c.name), { id: c.id, name: c.name });
   }
 
+  const { data: yearSetting } = await supabase
+    .from('app_settings')
+    .select('value')
+    .eq('key', 'ceremony_year')
+    .maybeSingle();
+  const currentYear = Number(yearSetting?.value) || new Date().getFullYear();
+
+  // Mapa de categorias: chave normalizada -> { id, name, ceremony_year }
+  const catMap = new Map<string, { id: string; name: string; ceremony_year: number }>();
+  for (const c of categories ?? []) {
+    catMap.set(normalize(c.name), { id: c.id, name: c.name, ceremony_year: currentYear });
+  }
+
+  async function resolveOrCreateCategory(siteLabelRaw: string): Promise<{ id: string; name: string } | null> {
+    const siteLabelNorm = normalize(siteLabelRaw);
+
+    // 1) Match direto no mapa + validação de ano no banco
+    const cached = catMap.get(siteLabelNorm);
+    if (cached) {
+      const { data: onDb } = await supabase
+        .from('categories')
+        .select('id, name, ceremony_year')
+        .eq('id', cached.id)
+        .maybeSingle();
+      if (onDb?.ceremony_year === currentYear) return { id: onDb.id, name: onDb.name };
+    }
+
+    // 2) Match direto por nome e ano
+    const { data: existingCat } = await supabase
+      .from('categories')
+      .select('id, name')
+      .eq('ceremony_year', currentYear)
+      .ilike('name', siteLabelRaw)
+      .maybeSingle();
+    if (existingCat?.id) {
+      catMap.set(siteLabelNorm, { id: existingCat.id, name: existingCat.name, ceremony_year: currentYear });
+      return { id: existingCat.id, name: existingCat.name };
+    }
+
+    // 3) Sinônimos (se nome diferente)
+    for (const [dbKey, cachedCat] of catMap.entries()) {
+      const syns = CATEGORY_SYNONYMS[dbKey] ?? [];
+      if (siteLabelNorm === dbKey || syns.includes(siteLabelNorm)) {
+        const { data: onDb } = await supabase
+          .from('categories')
+          .select('id, name, ceremony_year')
+          .eq('id', cachedCat.id)
+          .maybeSingle();
+        if (onDb?.ceremony_year === currentYear) return { id: onDb.id, name: onDb.name };
+      }
+    }
+
+    // 4) Criar nova categoria
+    const nameToCreate = siteLabelRaw.trim();
+    const { data: inserted, error: insCatErr } = await supabase
+      .from('categories')
+      .insert({ name: nameToCreate, is_active: true, ceremony_year: currentYear, max_nominees: 5 })
+      .select('id, name')
+      .maybeSingle();
+
+    if (insCatErr) {
+      logger.error('category upsert error', { label: siteLabelRaw, error: insCatErr.message });
+      return null;
+    }
+
+    if (inserted?.id) {
+      catMap.set(siteLabelNorm, { id: inserted.id, name: inserted.name, ceremony_year: currentYear });
+      return { id: inserted.id, name: inserted.name };
+    }
+
+    return null;
+  }
+
   // Helper: resolve id da categoria no banco a partir do label do site (considerando sinônimos)
   function resolveCategoryId(siteLabelNorm: string): string | null {
     // match direto
@@ -222,7 +295,31 @@ export async function importFromGlobalScrape({ categoryId }: { categoryId?: stri
     const { data: existing } = await supabase
       .from('nominees')
       .select('id, name')
-      .eq('category_id', cat.id);
+      .eq('category_id', cat.id)
+      .eq('ceremony_year', currentYear);
+
+    const existingSet = new Set((existing ?? []).map(n => normalize(n.name)));
+    const toInsert: Array<{ name: string; category_id: string; meta: Record<string, any>; ceremony_year: number }> = [];
+
+    for (let i = 0; i < names.length; i++) {
+      const name = names[i];
+      const meta = metas[i] || {};
+
+      const norm = normalize(name);
+      if (!existingSet.has(norm)) {
+        const insertObj = {
+          name: name.trim(),
+          category_id: cat.id,
+          meta: (meta && typeof meta === 'object') ? { ...meta } : {},
+          ceremony_year: currentYear,
+        };
+        toInsert.push(insertObj);
+        existingSet.add(norm);
+      } else {
+        logger.debug('duplicate skip', { category: cat.name, name });
+      }
+    }
+
 
     const existingSet = new Set((existing ?? []).map(n => normalize(n.name)));
     const toInsert: Array<{ name: string; category_id: string; meta: Record<string, any> }> = [];
