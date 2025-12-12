@@ -24,21 +24,17 @@ type AdminSearchParams = { categoryId?: string }
 export default async function AdminUnifiedPage({
   searchParams,
 }: {
-  searchParams?: any
+  searchParams?: Promise<Record<string, string | string[] | undefined>>
 }) {
   const supabase = await createServerSupabaseClient()
-  -  const sp = searchParams ?? {}
-  -  const selectedCategoryId = sp.categoryId ?? null
-    // Desembrulha searchParams quando for Promise; caso contrário usa objeto
-   let sp: AdminSearchParams = {}
-    if (searchParams) {
-      if (typeof searchParams === 'object' && 'then' in (searchParams as any)) {
-        sp = (await searchParams) ?? {}
-      } else {
-        sp = searchParams as AdminSearchParams
-      }
-    }
-    const selectedCategoryId = sp?.categoryId ?? null
+  // Desembrulha searchParams (Promise) no Next 16
+  const sp = (await searchParams) ?? {}
+  const selectedCategoryId =
+    typeof sp.categoryId === 'string'
+      ? sp.categoryId
+      : Array.isArray(sp.categoryId)
+      ? sp.categoryId[0]
+      : null
 
   // Ano corrente
   const { data: ceremonyYearSetting } = await supabase
