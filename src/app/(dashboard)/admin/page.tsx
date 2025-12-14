@@ -2,7 +2,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
-import { CategoryCard } from './categories/category-card'
+import { ExpandableCategoryCard } from './categories/ExpandableCategoryCard'
 import SettingsBetsForm from './settings/_components/SettingsBetsForm'
 import SettingsResultsForm from './settings/_components/SettingsResultsForm'
 import { Button } from '@/components/ui/button'
@@ -33,8 +33,8 @@ export default async function AdminUnifiedPage({
     typeof sp.categoryId === 'string'
       ? sp.categoryId
       : Array.isArray(sp.categoryId)
-      ? sp.categoryId[0]
-      : null
+        ? sp.categoryId[0]
+        : null
 
   // Ano corrente
   const { data: ceremonyYearSetting } = await supabase
@@ -42,7 +42,7 @@ export default async function AdminUnifiedPage({
     .select('key, value')
     .eq('key', 'ceremony_year')
     .maybeSingle()
-    
+
   const currentYear = Number(ceremonyYearSetting?.value) || new Date().getFullYear()
 
   // Categorias
@@ -197,15 +197,22 @@ export default async function AdminUnifiedPage({
         </div>
 
         <div className="border-t pt-6">
-          <h3 className="text-lg font-semibold">Fontes (Global Scrape)</h3>
-          <div className="mb-3">
-            <ImportAllFromGlobalButton />
-          </div>
-          {scrapeErr ? (
-            <div className="text-sm text-red-600">Erro ao carregar fontes: {scrapeErr.message}</div>
-          ) : (
-            <SettingsScrapeSourcesForm sources={scrapeSources ?? []} />
-          )}
+          <details className="rounded-md border bg-card">
+            <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium flex items-center justify-between">
+              <span>Fontes (Global Scrape)</span>
+              <span className="text-xs text-muted-foreground">(clique para expandir/colapsar)</span>
+            </summary>
+            <div className="px-4 pb-4 space-y-3">
+              <div className="mb-2">
+                <ImportAllFromGlobalButton />
+              </div>
+              {scrapeErr ? (
+                <div className="text-sm text-red-600">Erro ao carregar fontes: {scrapeErr.message}</div>
+              ) : (
+                <SettingsScrapeSourcesForm sources={scrapeSources ?? []} />
+              )}
+            </div>
+          </details>
         </div>
       </section>
 
@@ -218,9 +225,14 @@ export default async function AdminUnifiedPage({
         </div>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {(categories ?? []).map((category) => (
-            <CategoryCard key={category.id} category={category} />
+            <ExpandableCategoryCard
+              key={category.id}
+              category={category}
+              ceremonyYear={currentYear}
+              nomineesCount={counts.get(category.id) ?? 0}
+            />
           ))}
-        </div>
+
       </section>
 
       <section className="space-y-4">
@@ -292,106 +304,8 @@ export default async function AdminUnifiedPage({
                 <Button type="submit">Importar Indicados</Button>
               </form>
             </section>
-
-            {/* Entrada individual e lista */}
-            <section className="space-y-4">
-              {/* <h4 className="text-lg font-semibold">Entrada Individual</h4>
-                <form action={createNominee} className="flex gap-2">
-                  <input type="hidden" name="category_id" value={selectedCategoryId} />
-                  <Input name="name" placeholder="Nome do indicado" required minLength={2} />
-                  <Button type="submit">Adicionar</Button>
-                </form> */}
-
-              <h4 className="text-lg font-semibold">Indicados:</h4>
-              <ul className="divide-y">
-                {categoryNominees.map((n) => {
-                  const posterPath =
-                    (n as any)?.tmdb_data?.poster_path ??
-                    (n as any)?.tmdb_data?.profile_path ??
-                    null
-                  const posterUrl = getTmdbImageUrl(posterPath, 'list')
-
-                  return (
-                    <li key={n.id} className="flex items-center justify-between py-3">
-                      <div className="flex items-center gap-3">
-                        {posterUrl ? (
-                          <Image
-                            src={posterUrl}
-                            alt={n.name}
-                            width={92}
-                            height={138}
-                            className="rounded border bg-card object-cover"
-                          />
-                        ) : (
-                          <div className="w-[92px] h-[138px] rounded border bg-card grid place-items-center text-[11px] text-foreground/70">
-                            Sem imagem
-                          </div>
-                        )}
-
-                        <div className="flex flex-col">
-                          <span className="font-medium">{n.name}</span>
-
-                          {(n as any)?.meta?.film_title && (
-                            <span className="text-xs text-foreground/70">
-                              Filme: {(n as any).meta.film_title}
-                            </span>
-                          )}
-
-                          {(n as any)?.tmdb_data?.release_date && (
-                            <span className="text-xs text-foreground/70">
-                              {new Date((n as any).tmdb_data.release_date).getFullYear()}
-                            </span>
-                          )}
-
-                          {n.tmdb_data ? (
-                            <span className="mt-1 w-fit text-xs px-2 py-1 rounded bg-green-100 text-green-700">
-                              TMDB OK
-                            </span>
-                          ) : (
-                            <span className="mt-1 w-fit text-xs px-2 py-1 rounded bg-muted text-muted-foreground">
-                              TMDB Pendente
-                            </span>
-                          )}
-
-                          {n.is_winner && (
-                            <span className="mt-1 w-fit text-xs px-2 py-1 rounded bg-purple-100 text-purple-700">
-                              Vencedor
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <form action={enrichNomineeWithTMDB} className="flex items-center gap-2">
-                          <input type="hidden" name="nominee_id" value={n.id} />
-                          <input type="hidden" name="category_id" value={selectedCategoryId} />
-                          <input type="hidden" name="type" value="movie" />
-                          <Input name="name" placeholder="Título do filme" defaultValue={n.name} className="text-sm w-56" />
-                          <Button variant="outline" className="text-sm">Buscar TMDB</Button>
-                        </form>
-
-                        <form action={updateNominee} className="flex items-center gap-2">
-                          <input type="hidden" name="id" value={n.id} />
-                          <Input name="name" defaultValue={n.name} className="text-sm w-56" />
-                          <Button variant="outline" className="text-sm">Salvar</Button>
-                        </form>
-
-                        <ConfirmDeleteNomineeDialog id={n.id} />
-
-                        <WinnerSetForm
-                          categoryId={selectedCategoryId}
-                          nomineeId={n.id}
-                          disabled={!!n.is_winner}
-                        />
-                      </div>
-                    </li>
-                  )
-                })}
-              </ul>
-            </section>
-          </div>
+          </div >
         )}
-      </section>
-    </div >
+    </div>
   )
 }
