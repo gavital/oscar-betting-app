@@ -1,14 +1,28 @@
 import { NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 
-export async function GET(req: Request, { params }: { params: { id: string } }) {
+export async function GET(req: Request, ctx: any) {
   try {
     const supabase = await createServerSupabaseClient()
     const url = new URL(req.url)
     const yearParam = url.searchParams.get('year')
     const ceremonyYear = yearParam ? Number(yearParam) : null
 
-    if (!params?.id) {
+    // Unwrap de params (Next 16 pode entregar como Promise)
+    let params: any = undefined
+    if (ctx) {
+      if (ctx.params && typeof ctx.params === 'object' && 'then' in ctx.params) {
+        params = await ctx.params
+      } else if (typeof ctx === 'object' && 'then' in ctx) {
+        const awaited = await ctx
+        params = awaited?.params
+      } else {
+        params = ctx.params
+      }
+    }
+
+    const id = params?.id as string | undefined
+    if (!id) {
       return NextResponse.json({ ok: false, error: 'Missing category id' }, { status: 400 })
     }
 
@@ -26,7 +40,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     const { data, error } = await supabase
       .from('nominees')
       .select('id, name, meta, tmdb_data, is_winner')
-      .eq('category_id', params.id)
+      .eq('category_id', id)
       .eq('ceremony_year', year)
       .order('name')
 
