@@ -232,80 +232,81 @@ export default async function AdminUnifiedPage({
               nomineesCount={counts.get(category.id) ?? 0}
             />
           ))}
-
+        </div>
       </section>
+    </div>
 
-      <section className="space-y-4">
-        <h2 className="text-lg font-semibold">Indicados por Categoria</h2>
-        {!selectedCategoryId && (
-          <>
-            <p className="text-sm text-muted-foreground">Selecione uma categoria para gerenciar seus indicados.</p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {(categories ?? []).map(cat => {
-                const count = counts.get(cat.id) ?? 0
-                return (
-                  <Link
-                    key={cat.id}
-                    href={`/admin?categoryId=${cat.id}`}
-                    className="border rounded p-4 bg-card hover:bg-muted"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="font-semibold">{cat.name}</h3>
-                        <p className="text-sm text-muted-foreground">{count} / {cat.max_nominees} indicados</p>
-                      </div>
-                      <span className={`text-xs px-2 py-1 rounded ${cat.is_active ? 'bg-green-100 text-green-700' : 'bg-muted text-muted-foreground'}`}>
-                        {cat.is_active ? 'Ativa' : 'Inativa'}
-                      </span>
+    <section className="space-y-4">
+      <h2 className="text-lg font-semibold">Indicados por Categoria</h2>
+      {!selectedCategoryId && (
+        <>
+          <p className="text-sm text-muted-foreground">Selecione uma categoria para gerenciar seus indicados.</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {(categories ?? []).map(cat => {
+              const count = counts.get(cat.id) ?? 0
+              return (
+                <Link
+                  key={cat.id}
+                  href={`/admin?categoryId=${cat.id}`}
+                  className="border rounded p-4 bg-card hover:bg-muted"
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="font-semibold">{cat.name}</h3>
+                      <p className="text-sm text-muted-foreground">{count} / {cat.max_nominees} indicados</p>
                     </div>
-                  </Link>
-                )
-              })}
-            </div>
-          </>
-        )}
+                    <span className={`text-xs px-2 py-1 rounded ${cat.is_active ? 'bg-green-100 text-green-700' : 'bg-muted text-muted-foreground'}`}>
+                      {cat.is_active ? 'Ativa' : 'Inativa'}
+                    </span>
+                  </div>
+                </Link>
+              )
+            })}
+          </div>
+        </>
+      )}
 
-        {selectedCategoryId && selectedCategory && (
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-xl font-semibold">{selectedCategory.name}</h3>
-                <p className="text-sm text-muted-foreground">
-                  {categoryNominees.length} / {selectedCategory.max_nominees} indicados
-                </p>
+      {selectedCategoryId && selectedCategory && (
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-xl font-semibold">{selectedCategory.name}</h3>
+              <p className="text-sm text-muted-foreground">
+                {categoryNominees.length} / {selectedCategory.max_nominees} indicados
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <ImportFromGlobalPageButton categoryId={selectedCategoryId} />
+              <Link href={`/admin${qs({ categoryId: undefined })}`}>
+                <Button variant="outline">Voltar</Button>
+              </Link>
+            </div>
+          </div>
+
+          {/* Entrada rápida */}
+          <section className="space-y-3">
+            <h4 className="text-lg font-semibold">Entrada Rápida</h4>
+            <form action={importNominees} className="space-y-3">
+              <input type="hidden" name="category_id" value={selectedCategoryId} />
+              <Label htmlFor="bulk_text">Cole a lista de indicados (um por linha)</Label>
+              <textarea
+                id="bulk_text"
+                name="bulk_text"
+                className="w-full border rounded p-2 h-40 bg-card text-foreground"
+                placeholder="Ex:\nFilme A\nFilme B\nFilme C"
+              />
+              <div className="text-sm text-foreground/70">
+                Duplicatas serão removidas automaticamente. Linhas em branco são ignoradas.
               </div>
               <div className="flex items-center gap-2">
-                <ImportFromGlobalPageButton categoryId={selectedCategoryId} />
-                <Link href={`/admin${qs({ categoryId: undefined })}`}>
-                  <Button variant="outline">Voltar</Button>
-                </Link>
+                <input id="replace" type="checkbox" name="replace" defaultChecked />
+                <Label htmlFor="replace" className="text-sm">Substituir os indicados existentes</Label>
               </div>
-            </div>
-
-            {/* Entrada rápida */}
-            <section className="space-y-3">
-              <h4 className="text-lg font-semibold">Entrada Rápida</h4>
-              <form action={importNominees} className="space-y-3">
-                <input type="hidden" name="category_id" value={selectedCategoryId} />
-                <Label htmlFor="bulk_text">Cole a lista de indicados (um por linha)</Label>
-                <textarea
-                  id="bulk_text"
-                  name="bulk_text"
-                  className="w-full border rounded p-2 h-40 bg-card text-foreground"
-                  placeholder="Ex:\nFilme A\nFilme B\nFilme C"
-                />
-                <div className="text-sm text-foreground/70">
-                  Duplicatas serão removidas automaticamente. Linhas em branco são ignoradas.
-                </div>
-                <div className="flex items-center gap-2">
-                  <input id="replace" type="checkbox" name="replace" defaultChecked />
-                  <Label htmlFor="replace" className="text-sm">Substituir os indicados existentes</Label>
-                </div>
-                <Button type="submit">Importar Indicados</Button>
-              </form>
-            </section>
-          </div >
-        )}
+              <Button type="submit">Importar Indicados</Button>
+            </form>
+          </section>
+        </div >
+      )}
     </div>
   )
 }
