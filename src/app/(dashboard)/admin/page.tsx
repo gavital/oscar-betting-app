@@ -15,7 +15,6 @@ import { getTmdbImageUrl } from '@/lib/tmdb/client'
 import { ImportAllFromGlobalButton } from './settings/_components/ImportAllFromGlobalButton';
 import { setCeremonyYear, startNewEdition, purgeCurrentEdition } from './settings/actions'
 
-
 import { SettingsScrapeSourcesForm } from './settings/_components/SettingsScrapeSourcesForm'
 import { ImportFromGlobalPageButton } from './nominees/_components/ImportFromGlobalPageButton'
 
@@ -134,6 +133,7 @@ export default async function AdminUnifiedPage({
         <h1 className="text-2xl font-bold">Administração</h1>
         <p className="text-sm text-muted-foreground">Configurações, categorias e indicados em um só lugar</p>
       </div>
+
       <section className="space-y-6 mt-4">
         <h2 className="text-lg font-semibold">Configurações Globais</h2>
 
@@ -194,8 +194,6 @@ export default async function AdminUnifiedPage({
           <p className="text-xs text-muted-foreground mt-2">
             Nova edição altera o ano e mantém edições passadas; Limpar dados remove categorias, indicados e apostas apenas do ano atual.
           </p>
-        </div>
-
         <div className="border-t pt-6">
           <details className="rounded-md border bg-card">
             <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium flex items-center justify-between">
@@ -213,6 +211,7 @@ export default async function AdminUnifiedPage({
               )}
             </div>
           </details>
+          </div>
         </div>
       </section>
 
