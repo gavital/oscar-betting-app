@@ -9,12 +9,18 @@ Aposte com seus amigos nos vencedores do Oscar. Este projeto web permite registr
 - Registro de usuário com verificação de e-mail (Supabase)
 - Login seguro com feedback de sucesso/erro
 - Proteção de rotas para áreas restritas (bets, ranking, admin)
-- Gestão de categorias (Admin): listar, criar, editar e ativar/desativar
+- Gestão de categorias (Admin): listar, criar/editar e ativar/desativar
 - Gestão de indicados (Admin): CRUD, importação em massa com dedupe e limite por categoria
 - Enriquecimento de indicados com dados do TMDB (pôster, dados principais)
 - Tipagem forte do banco de dados (Supabase types)
 - UI moderna com Tailwind v4 e shadcn
 - Testes com Vitest (Server Actions e UI) e CI via GitHub Actions
+
+Atualizações recentes:
+- Admin unificado em uma única página: “Configurações Globais”, “Edição da cerimônia”, “Fontes (Global Scrape)” (colapsável) e “Categorias”
+- Cards de categoria expansíveis (acordeões): ao expandir, os indicados aparecem dentro do card com ações inline (TMDB, editar, excluir, vencedor)
+- Criação automática de categorias por edição durante importações globais
+- Suporte a edições via ceremony_year em categories, nominees e bets (com migração e índices)
 
 Planejadas (conforme requisitos):
 - Registro/gestão de apostas (UI completa)
@@ -31,11 +37,11 @@ Planejadas (conforme requisitos):
 
 - Next.js 16 (App Router) – `src/app`
   - (auth): login, registro, confirmação, esqueci/reset senha
-  - (dashboard)/admin: categorias e indicados (Server Actions)
+  - (dashboard)/admin: página unificada com categorias/indicados (Server Actions)
   - (dashboard)/bets: registro/edição de apostas (actions implementadas; UI em progresso)
   - Rotas de API:
     - `src/app/api/auth/callback/route.ts` – troca de código por sessão e bootstrap de perfil
-    - `src/app/api/auth/signout/route.ts`
+    - `src/app/api/auth/signout/route.ts`- `src/app/api/admin/categories/[id]/nominees/route.ts` – lista indicados por categoria e ano da cerimônia (usado pelos cards expansíveis)
   - Layout global:
     - `src/app/layout.tsx` (providers e Toaster)
 - Supabase (helpers):
@@ -48,6 +54,16 @@ Planejadas (conforme requisitos):
   - `src/types/database.ts` (profiles, categories, nominees, bets, app_settings)
 - Proxy (Next 16):
   - `src/proxy.ts` – matcher único que não intercepta `/_next/**` nem assets, evitando quebrar Server Actions
+- Admin UI:
+  - Cards de categoria expansíveis: `src/app/(dashboard)/admin/categories/ExpandableCategoryCard.tsx`
+  - “Fontes (Global Scrape)” colapsáveis via `<details>` em admin/page
+  - Importação global: `ImportAllFromGlobalButton`
+  - Import por categoria: `ImportFromGlobalPageButton` e “Entrada rápida” por textarea dentro do card
+- Scraper:
+  - `src/lib/scrapers/omelete.ts` – parsing com seletores e sanitização:
+    - Remove “(Leia nossa crítica)”, NBSP, dashes especiais (–, —) e parênteses vazios “()”
+    - Em atuação, extrai corretamente name (ator/atriz) e meta.film_title (filme)
+    - Filtro estrito por ano e domínio
 - TMDB:
   - `src/lib/tmdb/client.ts` – busca e detalhes (filme/pessoa) e montagem de URL de imagem
   - UI: pôster de nominees via `next/image` + `getTmdbImageUrl`
@@ -56,9 +72,9 @@ Planejadas (conforme requisitos):
 
 Tabelas-chave em `src/types/database.ts`:
 - profiles: id, name, role (user/admin)
-- categories: id, name, max_nominees, is_active
-- nominees: id, category_id, name, tmdb_id, tmdb_data, imdb_id (legacy), imdb_data (legacy), is_winner
-- bets: id, user_id, category_id, nominee_id
+- categories: id, name, max_nominees, is_active, ceremony_year
+- nominees: id, category_id, name, meta (jsonb com film_title), tmdb_id, tmdb_data, is_winner, ceremony_year
+- bets: id, user_id, category_id, nominee_id, ceremony_year
 - app_settings: key/value (ex.: `bets_open`)
 
 ## 🚀 Começando
@@ -88,6 +104,7 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 
 # Bootstrap de admins (opcional; dev)
 ADMIN_EMAILS=seu.email@dominio.com,outro.admin@dominio.com
+SCRAPE_DEBUG=true # logs detalhados do scraper (opcional em dev)
 
 # TMDB
 TMDB_API_KEY=<sua-api-key-tmdb>
@@ -224,6 +241,39 @@ npm run test
 npm run test:watch
 ```
 
+## 🖥️ UI do Admin – Fluxo Atual
+
+Página unificada em `/admin`:
+
+- Configurações Globais:
+  - “Apostas Abertas/Fechadas”
+  - “Publicação dos Resultados”
+- Edição da Cerimônia:
+  - Campo “Ano” (setCeremonyYear)
+  - Botão “Nova Edição (mudar ano)” (startNewEdition)
+  - Botão “Limpar dados da edição atual” (purgeCurrentEdition)
+- Fontes (Global Scrape):
+  - Bloco colapsável `<details>` com:
+    - “Importar tudo (global)”
+    - Lista/CRUD de fontes globais (SettingsScrapeSourcesForm)
+- Categorias:
+  - Grade de cards
+  - Cada card tem:
+    - Toggle Ativa/Inativa
+    - Botão “Expandir/Recolher”
+    - Ao expandir:
+      - Carrega indicados on-demand via GET `/api/admin/categories/[id]/nominees?year=YYYY`
+      - “Entrada Rápida” para importação manual
+      - Botão “Import from Global Page” (scrape por categoria)
+      - Ações por indicado: enriquecimento TMDB, editar nome, excluir e marcar vencedor
+    - Quando expandido, o card ocupa a largura total (col-span-full)
+      e exibe conteúdo completo (overflow visível)
+
+Observações:
+- Importações globais criam categorias automaticamente para o ano corrente (ceremony_year)
+- Importações rápidas também salvam ceremony_year e revalidam `/admin`
+- Os cards expansíveis exibem meta.film_title sob o nome do indicado quando disponível
+
 ## 🎯 Funcionalidades (status)
 
 Usuário:
@@ -251,6 +301,14 @@ Admin:
 
 > Este produto utiliza a API do TMDB, mas não é endossado pelo TMDB.
 
+## 🪵 Logging do Scraper
+
+- Ative `SCRAPE_DEBUG=true` em `.env.local` para logs detalhados:
+  - Headings por categoria, contagem de lists, parsing por item
+  - Sanitização aplicada (crítica/NBSP/dashes/parênteses)
+  - Resumo de categorias detectadas e contagem de itens
+- Logs aparecem no console do servidor durante “Importar tudo (global)” e “Import from Global Page”
+
 ## 🧭 Padrões e Convenções
 
 - Server Actions para mutações (admin e bets)
@@ -265,6 +323,15 @@ Admin:
   - Em RSC/Actions, não mutar cookies (helpers SSR com set/remove no-op); limpe cookies `sb-*` se necessário
 - Dynamic APIs:
   - `cookies()`, `headers()`, `searchParams`, `params` retornam Promise: use `await` em Server Components
+- Roteamento dinâmico (Next 16):
+  - `params` pode ser Promise nas rotas: desembale com `await` antes de usar (`ctx.params` → `await ctx.params`)
+- Admin UI:
+  - Se “Indicados por Categoria” aparecer fora dos cards, remova a seção antiga e use apenas ExpandableCategoryCard
+  - Se um card expandido não mostrar o conteúdo completo, verifique se aplica `col-span-full` e `overflow-visible` quando expandido
+- next/image “unconfigured host”:
+  - Adicione `image.tmdb.org` em `images.remotePatterns` e reinicie o dev server
+- 431 Request Header Fields Too Large:
+  - Em RSC/Actions, não mutar cookies (helpers SSR com set/remove no-op); limpe cookies `sb-*` se necessário
 - next/image “unconfigured host”:
   - Adicione `image.tmdb.org` em `images.remotePatterns` e reinicie dev server
 - Server Actions:
@@ -358,6 +425,11 @@ Admin:
 - Homepage com estatísticas
 - Perfil do usuário e “Esqueci minha senha”
 - E2E com Playwright
+
+Atualizações recém-concluídas:
+- UI de Admin unificada com “Fontes” colapsáveis
+- Cards de categoria expansíveis com indicados inline
+- Criação automática de categorias por edição (ceremony_year)
 
 ## 🤝 Contribuição
 
