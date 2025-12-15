@@ -41,14 +41,11 @@ export default async function RootLayout({
   const themeCookie = cookieStore.get('theme')?.value as 'dark' | 'light' | undefined
   const initialThemeClass = themeCookie === 'dark' ? 'dark' : ''
 
-  return (
-    <html
-      lang="pt-BR"
-      className={`${initialThemeClass} ${inter.className}`}
-      suppressHydrationWarning
-      data-role={role} // opcional: expõe role no DOM para inspeção/uso
-    >
-      <body className="oscar-theme">{children}<Toaster /></body>
-    </html>
+  return (<html lang="pt-BR">
+    <body className="oscar-theme">
+      <SupabaseProvider>{children}</SupabaseProvider>
+      <Toaster />
+    </body>
+  </html>
   )
 }
