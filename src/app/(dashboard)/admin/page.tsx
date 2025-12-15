@@ -2,7 +2,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
-import { ExpandableCategoryCard } from './categories/ExpandableCategoryCard'
+import { AdminCategoriesAccordion } from './categories/AdminCategoriesAccordion'
 import SettingsBetsForm from './settings/_components/SettingsBetsForm'
 import SettingsResultsForm from './settings/_components/SettingsResultsForm'
 import { Button } from '@/components/ui/button'
@@ -65,6 +65,8 @@ export default async function AdminUnifiedPage({
   for (const n of nomineesCountRows ?? []) {
     counts.set(n.category_id, (counts.get(n.category_id) ?? 0) + 1)
   }
+  // Converte Map para objeto serializável (client)
+  const countsObj = Object.fromEntries(counts)
 
   // Settings globais
   const { data: betsOpenSetting } = await supabase
@@ -194,23 +196,23 @@ export default async function AdminUnifiedPage({
           <p className="text-xs text-muted-foreground mt-2">
             Nova edição altera o ano e mantém edições passadas; Limpar dados remove categorias, indicados e apostas apenas do ano atual.
           </p>
-        <div className="border-t pt-6">
-          <details className="rounded-md border bg-card">
-            <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium flex items-center justify-between">
-              <span>Fontes (Global Scrape)</span>
-              <span className="text-xs text-muted-foreground">(clique para expandir/colapsar)</span>
-            </summary>
-            <div className="px-4 pb-4 space-y-3">
-              <div className="mb-2">
-                <ImportAllFromGlobalButton />
+          <div className="border-t pt-6">
+            <details className="rounded-md border bg-card">
+              <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium flex items-center justify-between">
+                <span>Fontes (Global Scrape)</span>
+                <span className="text-xs text-muted-foreground">(clique para expandir/colapsar)</span>
+              </summary>
+              <div className="px-4 pb-4 space-y-3">
+                <div className="mb-2">
+                  <ImportAllFromGlobalButton />
+                </div>
+                {scrapeErr ? (
+                  <div className="text-sm text-red-600">Erro ao carregar fontes: {scrapeErr.message}</div>
+                ) : (
+                  <SettingsScrapeSourcesForm sources={scrapeSources ?? []} />
+                )}
               </div>
-              {scrapeErr ? (
-                <div className="text-sm text-red-600">Erro ao carregar fontes: {scrapeErr.message}</div>
-              ) : (
-                <SettingsScrapeSourcesForm sources={scrapeSources ?? []} />
-              )}
-            </div>
-          </details>
+            </details>
           </div>
         </div>
       </section>
@@ -222,16 +224,7 @@ export default async function AdminUnifiedPage({
             <p className="text-sm text-muted-foreground">Ative/desative e veja os indicados</p>
           </div>
         </div>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {(categories ?? []).map((category) => (
-            <ExpandableCategoryCard
-              key={category.id}
-              category={category}
-              ceremonyYear={currentYear}
-              nomineesCount={counts.get(category.id) ?? 0}
-            />
-          ))}
-        </div>
+        <AdminCategoriesAccordion categories={categories ?? []} ceremonyYear={currentYear} counts={countsObj} />
       </section>
     </div>
   )
