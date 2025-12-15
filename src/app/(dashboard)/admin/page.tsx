@@ -132,22 +132,22 @@ export default async function AdminUnifiedPage({
   return (
     <div className="space-y-6">
       <div className="border-b pb-4">
-        <h1 className="text-2xl font-bold">Administração</h1>
-        <p className="text-sm text-muted-foreground">Configurações, categorias e indicados em um só lugar</p>
+        <h1 className="text-3xl font-display heading-oscar text-gold">Oscar Admin</h1>
+        <p className="text-sm text-foreground/70">Configurações, categorias e indicados em um só lugar</p>
       </div>
 
       <section className="space-y-6 mt-4">
-        <h2 className="text-lg font-semibold">Configurações Globais</h2>
+        <h2 className="text-xl font-display text-gold">Configurações Globais</h2>
 
         <div className="flex items-center justify-between">
-          <div>
+          <div className="kpi-chip">
             <div className="text-sm text-foreground/80">Estado atual:</div>
             {betsOpen ? (
-              <span className="inline-flex items-center text-xs bg-green-100 text-green-700 px-2 py-1 rounded">
+              <span className="inline-flex items-center text-xs px-2 py-1 rounded">
                 APOSTAS ABERTAS
               </span>
             ) : (
-              <span className="inline-flex items-center text-xs bg-red-100 text-red-700 px-2 py-1 rounded">
+              <span className="inline-flex items-center text-xs px-2 py-1 rounded">
                 APOSTAS FECHADAS
               </span>
             )}
@@ -156,14 +156,14 @@ export default async function AdminUnifiedPage({
         </div>
 
         <div className="flex items-center justify-between border-t pt-6">
-          <div>
+          <div className="kpi-chip">
             <div className="text-sm text-foreground/80">Publicação dos resultados:</div>
             {resultsPublished ? (
-              <span className="inline-flex items-center text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded">
+              <span className="inline-flex items-center text-xs px-2 py-1 rounded">
                 RESULTADOS PUBLICADOS
               </span>
             ) : (
-              <span className="inline-flex items-center text-xs bg-muted text-muted-foreground px-2 py-1 rounded">
+              <span className="inline-flex items-center text-xs px-2 py-1 rounded">
                 RESULTADOS OCULTOS
               </span>
             )}
@@ -172,7 +172,7 @@ export default async function AdminUnifiedPage({
         </div>
 
         <div className="border-t pt-6">
-          <h3 className="text-lg font-semibold">Edição da cerimônia</h3>
+        <h3 className="text-lg font-display text-gold">Edição da cerimônia</h3>
           <form action={setCeremonyYear} className="flex items-center gap-2">
             <Label htmlFor="ceremony_year">Ano</Label>
             <Input
@@ -181,35 +181,37 @@ export default async function AdminUnifiedPage({
               type="number"
               defaultValue={Number(ceremonyYearSetting?.value) || new Date().getFullYear()}
             />
-            <Button type="submit">Salvar</Button>
+            <Button type="submit" className="btn-gold">Salvar</Button>
           </form>
 
           <div className="mt-3 flex items-center gap-3">
             <form action={startNewEdition}>
               <input type="hidden" name="ceremony_year" value={Number(ceremonyYearSetting?.value) || new Date().getFullYear()} />
-              <Button type="submit" variant="outline">Nova Edição (mudar ano)</Button>
+                          <Button type="submit" variant="outline" className="border-gold text-gold">Nova Edição (mudar ano)</Button>
             </form>
             <form action={purgeCurrentEdition}>
-              <Button type="submit" variant="destructive">Limpar dados da edição atual</Button>
+            <Button type="submit" variant="destructive" className="border-gold">Limpar dados da edição atual</Button>
             </form>
           </div>
           <p className="text-xs text-muted-foreground mt-2">
             Nova edição altera o ano e mantém edições passadas; Limpar dados remove categorias, indicados e apostas apenas do ano atual.
           </p>
-          <div className="border-t pt-6">
-            <details className="rounded-md border bg-card">
-              <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium flex items-center justify-between">
-                <span>Fontes (Global Scrape)</span>
-                <span className="text-xs text-muted-foreground">(clique para expandir/colapsar)</span>
+                    <div className="border-t pt-6">
+            <details className="rounded-md card-oscar">
+              <summary className="accordion-summary">
+                <span className="font-display text-gold">Fontes (Global Scrape)</span>
+                <span className="text-xs text-foreground/60">(clique para expandir/colapsar)</span>
               </summary>
-              <div className="px-4 pb-4 space-y-3">
+              <div className="accordion-details space-y-3">
                 <div className="mb-2">
-                  <ImportAllFromGlobalButton />
+                <ImportAllFromGlobalButton />
                 </div>
                 {scrapeErr ? (
                   <div className="text-sm text-red-600">Erro ao carregar fontes: {scrapeErr.message}</div>
                 ) : (
-                  <SettingsScrapeSourcesForm sources={scrapeSources ?? []} />
+                  <div className="card-oscar rounded-md p-3">
+                    <SettingsScrapeSourcesForm sources={scrapeSources ?? []} />
+                  </div>
                 )}
               </div>
             </details>
@@ -220,8 +222,8 @@ export default async function AdminUnifiedPage({
       <section className="space-y-4 mt-8">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-semibold">Categorias do Oscar</h2>
-            <p className="text-sm text-muted-foreground">Ative/desative e veja os indicados</p>
+          <h2 className="text-xl font-display text-gold">Categorias do Oscar</h2>
+                      <p className="text-sm text-foreground/70">Ative/desative e veja os indicados</p>
           </div>
         </div>
         <AdminCategoriesAccordion categories={categories ?? []} ceremonyYear={currentYear} counts={countsObj} />

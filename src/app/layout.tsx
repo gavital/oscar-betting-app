@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
+import '../styles/theme.css'
 import { Toaster } from '@/components/ui/sonner'
 import { TanstackProvider } from '@/providers/TanstackProvider'
 import { SupabaseProvider } from '@/providers/SupabaseProvider'
@@ -47,14 +48,7 @@ export default async function RootLayout({
       suppressHydrationWarning
       data-role={role} // opcional: expõe role no DOM para inspeção/uso
     >
-      <body>
-        <SupabaseProvider>
-          <TanstackProvider>
-            {children}
-            <Toaster richColors />
-          </TanstackProvider>
-        </SupabaseProvider>
-      </body>
+      <body className="oscar-theme">{children}<Toaster /></body>
     </html>
   )
 }
