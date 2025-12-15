@@ -66,7 +66,11 @@ export function ExpandableCategoryCard({
   }
 
   return (
-    <Card id={`category-${category.id}`} className="overflow-hidden">
+    // Quando expandido, o item da grade ocupa a largura total
+    <div className={expanded ? 'col-span-full w-full' : ''}>
+      <Card
+        id={`category-${category.id}`}
+        className={expanded ? 'overflow-visible' : 'overflow-hidden'}>
       <CardHeader className="pb-3">
         <div className="flex justify-between items-start">
           <div className="space-y-1">
@@ -224,6 +228,7 @@ export function ExpandableCategoryCard({
           </div>
         )}
       </CardContent>
-    </Card>
+      </Card>
+    </div>
   )
 }
